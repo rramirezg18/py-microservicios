@@ -1,0 +1,94 @@
+<div class="players-page">
+  <header>
+    <div>
+      <h1>Jugadores</h1>
+      <p class="subtitle">Consulta la plantilla proveniente del microservicio de jugadores en PHP + MySQL.</p>
+    </div>
+    <nav>
+      <a routerLink="/admin" class="link">Volver al dashboard</a>
+      <a routerLink="/control" class="link">Ir al panel de control</a>
+    </nav>
+  </header>
+
+  <section class="filters">
+    <form (ngSubmit)="onSubmit()" class="filters-form">
+      <label>
+        <span>Búsqueda</span>
+        <input
+          type="search"
+          name="search"
+          [(ngModel)]="searchTerm"
+          placeholder="Nombre, correo, posición..."
+        />
+      </label>
+
+      <label>
+        <span>Equipo</span>
+        <input type="text" name="team" [(ngModel)]="teamFilter" placeholder="Ej. Sharks" />
+      </label>
+
+      <label>
+        <span>Por página</span>
+        <input type="number" name="perPage" [(ngModel)]="perPage" min="1" max="100" />
+      </label>
+
+      <div class="filters-actions">
+        <button type="submit" [disabled]="loading()">Buscar</button>
+        <button type="button" class="secondary" (click)="clearFilters()" [disabled]="loading()">
+          Limpiar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="results" aria-live="polite">
+    <div class="status" *ngIf="loading()">Cargando jugadores...</div>
+    <div class="status error" *ngIf="error() as message">{{ message }}</div>
+    <div class="status" *ngIf="isEmpty()">No se encontraron jugadores con los filtros seleccionados.</div>
+
+    <div class="table-wrapper" *ngIf="!loading() && !error() && players().length">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Equipo</th>
+            <th>Posición</th>
+            <th>No.</th>
+            <th>Nacionalidad</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let player of players()">
+            <td>
+              <strong>{{ player.name }}</strong>
+              <span class="muted" *ngIf="player.age">{{ player.age }} años</span>
+            </td>
+            <td>
+              <a [href]="'mailto:' + player.email">{{ player.email }}</a>
+            </td>
+            <td>{{ player.team || 'Libre' }}</td>
+            <td>{{ player.position || '—' }}</td>
+            <td class="number">{{ player.number ?? '—' }}</td>
+            <td>{{ player.nationality || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="pagination" *ngIf="meta() as pagination">
+    <button type="button" (click)="goToPrevious()" [disabled]="page <= 1 || loading()">Anterior</button>
+    <span>
+      Página {{ pagination.current_page }} de {{ pagination.last_page }} ·
+      {{ pagination.total }} jugadores
+    </span>
+    <button
+      type="button"
+      (click)="goToNext()"
+      [disabled]="loading() || page >= pagination.last_page"
+    >
+      Siguiente
+    </button>
+  </footer>
+</div>
