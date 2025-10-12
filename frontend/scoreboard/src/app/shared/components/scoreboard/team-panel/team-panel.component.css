@@ -1,0 +1,18 @@
+.team {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  text-transform: uppercase;
+}
+
+.team .score {
+  font: 800 clamp(90px, 14vw, 180px) / 1 'Inter', sans-serif;
+  letter-spacing: 0.08em;
+  color: var(--warning);
+}
+
+.team .name {
+  font: 700 clamp(18px, 3.4vw, 34px) / 1 'Inter', sans-serif;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+}

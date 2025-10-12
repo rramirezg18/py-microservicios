@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Scoreboard Icon</title>
+  <desc id="desc">Minimal scoreboard glyph used as the site favicon.</desc>
+  <rect x="4" y="12" width="56" height="40" rx="6" fill="#111827"/>
+  <rect x="8" y="16" width="48" height="32" rx="4" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <path d="M16 26h8v12h-8zM40 26h8v12h-8z" fill="#f9fafb"/>
+  <text x="32" y="38" text-anchor="middle" font-family="'Segoe UI',sans-serif" font-weight="700" font-size="14" fill="#10b981">
+    VS
+  </text>
+  <circle cx="32" cy="20" r="3" fill="#fbbf24"/>
+</svg>

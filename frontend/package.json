@@ -1,0 +1,14 @@
+{
+  "name": "scoreboard-frontend",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm install --prefix scoreboard",
+    "dev": "npm run dev --prefix scoreboard",
+    "start": "npm run start --prefix scoreboard",
+    "build": "npm run build --prefix scoreboard",
+    "lint": "npm run lint --prefix scoreboard",
+    "preview": "npm run preview --prefix scoreboard",
+    "test": "npm run test --prefix scoreboard",
+    "typecheck": "npm run typecheck --prefix scoreboard"
+  }
+}
