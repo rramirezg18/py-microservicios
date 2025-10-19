@@ -1,44 +1,82 @@
+using Microsoft.EntityFrameworkCore;
+using MatchesService.Data;
+using MatchesService.Repositories;
+using MatchesService.Services;
+using MatchesService.Services.Runtime;
+using MatchesService.Hubs;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// ==========================================================
+// 🔧 CONFIGURACIÓN DE SERVICIOS
+// ==========================================================
+
+// 1️⃣ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 2️⃣ Controladores + JSON
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+    {
+        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    });
+
+// 3️⃣ CORS (permitir peticiones desde tu frontend Angular/React)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
+
+// 4️⃣ DbContext (base de datos de Matches)
+builder.Services.AddDbContext<MatchesDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 5️⃣ Inyección de dependencias (Repository / Service / Runtime)
+builder.Services.AddScoped<IMatchRepository, MatchRepository>();
+builder.Services.AddScoped<IMatchService, MatchService>();
+builder.Services.AddSingleton<IMatchRunTime, MatchRunTime>();
+
+// 6️⃣ SignalR (para comunicación en tiempo real)
+builder.Services.AddSignalR();
+
+// 7️⃣ HttpClient para llamadas a otros microservicios (teams-service)
+builder.Services.AddHttpClient();
+
+// ==========================================================
+// 🚀 CONSTRUCCIÓN DE LA APLICACIÓN
+// ==========================================================
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 1️⃣ Middleware: Swagger
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// 2️⃣ Middleware: HTTPS + CORS
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// 3️⃣ Middleware: Autenticación / Autorización (si se usa JWT o Roles)
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+// ==========================================================
+// 🔌 ENDPOINTS Y HUBS
+// ==========================================================
 
+// Controladores API REST
+app.MapControllers();
+
+// Hub de SignalR para actualizaciones en vivo
+app.MapHub<ScoreHub>("/hub/score");
+
+// ==========================================================
+// 🟢 INICIO DE LA APLICACIÓN
+// ==========================================================
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
