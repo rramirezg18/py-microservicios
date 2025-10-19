@@ -1,24 +1,30 @@
-using System.Security.Claims;
 using System.Text;
-using AuthService.Data;
-using AuthService.Repositories;
-using AuthService.Repositories.Interfaces;
-using AuthService.Services;
-using AuthService.Services.Interfaces;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using AspNet.Security.OAuth.GitHub;
+using Microsoft.AspNetCore.Http; // SameSiteMode
+
+using AuthService.Data;
+using AuthService.Repositories.Interfaces;
+using AuthService.Repositories;
+using AuthService.Services.Interfaces;
+using AuthService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1) Controllers + Swagger
+// (Opcional) Cargar user-secrets en Development
+if (builder.Environment.IsDevelopment())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
+
+// Controllers + Swagger (con auth Bearer)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    // JWT en Swagger
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "auth-service", Version = "v1" });
     var jwtScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -36,12 +42,76 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 2) DB (SQL Server por defecto)
-var cs = builder.Configuration.GetConnectionString("DefaultConnection")
-         ?? "Server=localhost,1433;Database=AuthDb;User Id=sa;Password=Your_strong_password_123;TrustServerCertificate=true;";
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs));
+// DbContext
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 3) DI (Repos + Services)
+// AUTH: JWT + Cookie externa + GitHub OAuth
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        var key = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+        if (Encoding.UTF8.GetBytes(key).Length < 32)
+            throw new InvalidOperationException("Jwt:Key debe tener al menos 32 bytes (256 bits).");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ClockSkew = TimeSpan.Zero
+        };
+    })
+    // Cookie temporal del flujo externo
+    .AddCookie("External", cookie =>
+    {
+        cookie.Cookie.SameSite = SameSiteMode.Lax;                     // para callback top-level
+        cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // en HTTP dev no fuerza Secure
+        cookie.ExpireTimeSpan = TimeSpan.FromMinutes(10);
+    })
+    .AddGitHub(options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:GitHub:ClientId"]!;
+        options.ClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"]!;
+
+        // ⚠️ El callback del PROVIDER (debe coincidir con GitHub OAuth App)
+        options.CallbackPath = "/signin-github";
+
+        options.SignInScheme = "External";
+        options.Scope.Add("user:email");
+        options.SaveTokens = true;
+
+        // Evita “Correlation failed” en dev http
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    });
+
+builder.Services.AddAuthorization();
+
+// CORS para tu frontend Angular (4200)
+builder.Services.AddCors(opt =>
+{
+    opt.AddPolicy("frontend", p =>
+        p.WithOrigins(
+            "http://localhost:4200",
+            "http://127.0.0.1:4200"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials()
+    );
+});
+
+// DI
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
@@ -50,61 +120,29 @@ builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 
-// 4) JWT
-var jwt = builder.Configuration.GetSection("Jwt");
-var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"] ?? "SuperSecretKey123"));
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
-    {
-        o.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwt["Issuer"] ?? "auth-service",
-            ValidAudience = jwt["Audience"] ?? "scoreboard",
-            IssuerSigningKey = key,
-            ClockSkew = TimeSpan.FromSeconds(30),
-            NameClaimType = ClaimTypes.Name,
-            RoleClaimType = ClaimTypes.Role
-        };
-    });
-
-builder.Services.AddAuthorization();
-
-// 5) CORS (ajusta orígenes si quieres)
-builder.Services.AddCors(p =>
-{
-    p.AddPolicy("default", b => b
-        .AllowAnyOrigin()
-        .AllowAnyHeader()
-        .AllowAnyMethod());
-});
-
 var app = builder.Build();
 
-// Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("default");
+// Mantén HTTP en dev para simplificar OAuth local
+// app.UseHttpsRedirection();
+
+app.UseCookiePolicy(new CookiePolicyOptions
+{
+    MinimumSameSitePolicy = SameSiteMode.Lax
+});
+
+app.UseCors("frontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Health
-app.MapGet("/health", () => Results.Ok(new
-{
-    service = "auth-service",
-    status = "ok",
-    time = DateTime.UtcNow
-}));
-
 app.Run();
+
+public partial class Program { } // para AddUserSecrets<Program>()

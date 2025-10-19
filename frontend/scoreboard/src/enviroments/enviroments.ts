@@ -1,6 +1,5 @@
-// environment.ts / environment.prod.ts
 export const environment = {
-  production: true,
-  apiBaseUrl: '/api',
-  hubUrl: '/hubs/score'
+  production: false,
+  // URL del backend .NET
+  apiUrl: 'http://localhost:5220'
 };

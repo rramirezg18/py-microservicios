@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "FUgcr7LUMQc6d1efbY/jg3/q4Kd5DupHGFn4GorMEb5slko2Fs+Kbb+01FPonsAQQL6M3JP9EZpA7OxvTJf/ng==",
+  "dgSpecHash": "ejmJiKNfgGH6qQlA+5FG2qRbiQvHHV2nD7b89c0PLdmb4gyAkS4lP/pNlRKUSIwBvx1+w6E6yESamGHeBtu1JA==",
   "success": true,
   "projectFilePath": "/home/roberto/Escritorio/py-microservicios/auth-service/AuthService.csproj",
   "expectedPackageFiles": [
+    "/home/roberto/.nuget/packages/aspnet.security.oauth.github/8.1.0/aspnet.security.oauth.github.8.1.0.nupkg.sha512",
     "/home/roberto/.nuget/packages/azure.core/1.38.0/azure.core.1.38.0.nupkg.sha512",
     "/home/roberto/.nuget/packages/azure.identity/1.11.4/azure.identity.1.11.4.nupkg.sha512",
     "/home/roberto/.nuget/packages/bcrypt.net-next/4.0.3/bcrypt.net-next.4.0.3.nupkg.sha512",

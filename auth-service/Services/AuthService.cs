@@ -2,13 +2,11 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 using AuthService.Models.Dtos;
 using AuthService.Models.Entities;
 using AuthService.Repositories.Interfaces;
 using AuthService.Services.Interfaces;
-using System.ComponentModel.DataAnnotations;
-using BCrypt.Net; 
-
 
 namespace AuthService.Services
 {
@@ -28,7 +26,7 @@ namespace AuthService.Services
             return new LoginResponseDto
             {
                 Username = user.Username,
-                Role = new RoleDto { Name = user.Role?.Name ?? "" },
+                Role = new RoleDto { Id = user.RoleId, Name = user.Role?.Name ?? "" },
                 Token = token
             };
         }
@@ -54,10 +52,67 @@ namespace AuthService.Services
             return "Usuario registrado correctamente.";
         }
 
+        // === GitHub OAuth -> JWT propio + rol Admin ===
+        public async Task<LoginResponseDto> AuthenticateWithGitHubAsync(string githubLogin, string? email)
+        {
+            var username = $"github:{githubLogin}".ToLowerInvariant();
+
+            var user = await _userRepository.GetByUsernameAsync(username);
+            var admin = await EnsureAdminRoleAsync();
+
+            if (user is null)
+            {
+                var placeholder = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N"));
+                user = new User
+                {
+                    Username = username,
+                    Password = placeholder,
+                    RoleId = admin.Id
+                };
+                await _userRepository.AddAsync(user);
+                user.Role = admin;
+            }
+            else
+            {
+                user.Role ??= admin;
+                if (user.RoleId != admin.Id)
+                {
+                    user.RoleId = admin.Id;
+                    // Si tienes método de update, podrías persistir esto aquí.
+                }
+            }
+
+            var token = GenerateJwtToken(user);
+
+            return new LoginResponseDto
+            {
+                Username = user.Username,
+                Role = new RoleDto { Id = user.RoleId, Name = user.Role?.Name ?? "Admin" },
+                Token = token
+            };
+        }
+
+        private async Task<Role> EnsureAdminRoleAsync()
+        {
+            var admin = await _roleRepository.GetByNameAsync("Admin");
+            if (admin is not null) return admin;
+
+            return await _roleRepository.AddRoleAsync(new Role
+            {
+                Name = "Admin",
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = 0
+            });
+        }
+
         private string GenerateJwtToken(User user)
         {
             var jwtSettings = _config.GetSection("Jwt");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? "SuperSecretKey123"));
+            var keyStr = jwtSettings["Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+            var keyBytes = Encoding.UTF8.GetBytes(keyStr);
+            if (keyBytes.Length < 32) throw new InvalidOperationException("Jwt:Key debe tener al menos 32 bytes (256 bits).");
+
+            var key = new SymmetricSecurityKey(keyBytes);
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var roleName = string.IsNullOrWhiteSpace(user.Role?.Name) ? "User" : user.Role!.Name;
@@ -74,8 +129,8 @@ namespace AuthService.Services
             };
 
             var token = new JwtSecurityToken(
-                issuer: jwtSettings["Issuer"] ?? "auth-service",
-                audience: jwtSettings["Audience"] ?? "scoreboard",
+                issuer: jwtSettings["Issuer"],
+                audience: jwtSettings["Audience"],
                 claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(jwtSettings["ExpiresInMinutes"] ?? "60")),
                 signingCredentials: creds

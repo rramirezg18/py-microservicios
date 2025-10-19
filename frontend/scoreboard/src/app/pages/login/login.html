@@ -27,5 +27,14 @@
     <button type="submit" [disabled]="loginForm.invalid">Ingresar</button>
   </form>
 
+  <div class="or">
+    <span>o</span>
+  </div>
+
+  <button type="button" class="github-btn" (click)="onLoginWithGitHub()">
+    <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" />
+    Ingresar con GitHub
+  </button>
+
   <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
 </div>

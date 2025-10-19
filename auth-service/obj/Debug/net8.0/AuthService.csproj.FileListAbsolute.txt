@@ -1,11 +1,3 @@
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.csproj.AssemblyReference.cache
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.GeneratedMSBuildEditorConfig.editorconfig
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.AssemblyInfoInputs.cache
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.AssemblyInfo.cs
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.csproj.CoreCompileInputs.cache
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.MvcApplicationPartsAssemblyInfo.cs
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.MvcApplicationPartsAssemblyInfo.cache
-/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.sourcelink.json
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/appsettings.Development.json
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/appsettings.json
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/AuthService
@@ -13,6 +5,7 @@
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/AuthService.runtimeconfig.json
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/AuthService.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/AuthService.pdb
+/home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/AspNet.Security.OAuth.GitHub.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/Azure.Core.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/Azure.Identity.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/BCrypt.Net-Next.dll
@@ -156,6 +149,14 @@
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/runtimes/win/lib/net6.0/System.Security.Cryptography.ProtectedData.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll
 /home/roberto/Escritorio/py-microservicios/auth-service/bin/Debug/net8.0/runtimes/win/lib/net6.0/System.Windows.Extensions.dll
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.csproj.AssemblyReference.cache
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.GeneratedMSBuildEditorConfig.editorconfig
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.AssemblyInfoInputs.cache
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.AssemblyInfo.cs
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.csproj.CoreCompileInputs.cache
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.MvcApplicationPartsAssemblyInfo.cs
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.MvcApplicationPartsAssemblyInfo.cache
+/home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/AuthService.sourcelink.json
 /home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/staticwebassets.build.json
 /home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/staticwebassets.development.json
 /home/roberto/Escritorio/py-microservicios/auth-service/obj/Debug/net8.0/staticwebassets/msbuild.AuthService.Microsoft.AspNetCore.StaticWebAssets.props

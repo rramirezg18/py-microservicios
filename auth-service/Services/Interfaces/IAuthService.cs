@@ -7,5 +7,8 @@ namespace AuthService.Services.Interfaces
     {
         Task<LoginResponseDto?> AuthenticateAsync(LoginRequestDto request);
         Task<string?> RegisterAsync(RegisterRequestDto request);
+
+        // NUEVO: login via GitHub -> emite tu JWT y da rol Admin
+        Task<LoginResponseDto> AuthenticateWithGitHubAsync(string githubLogin, string? email);
     }
 }

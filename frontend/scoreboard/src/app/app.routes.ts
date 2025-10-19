@@ -13,6 +13,13 @@ export const routes: Routes = [
       import('./pages/login/login').then(m => m.LoginComponent),
   },
 
+  // 👇 NUEVO: callback de OAuth (GitHub) que guarda el token y redirige
+  {
+    path: 'oauth/callback',
+    loadComponent: () =>
+      import('./pages/login/oauth-callback').then(m => m.OAuthCallbackComponent),
+  },
+
   // Redirecciones cuando faltan IDs
   { path: 'score', pathMatch: 'full', redirectTo: 'score/1' },
   { path: 'control', pathMatch: 'full', redirectTo: 'control/1' },
@@ -25,7 +32,7 @@ export const routes: Routes = [
       import('./pages/admin/admin-dashboard').then(m => m.AdminDashboardComponent),
   },
 
-  // Reportes (solo Admin) -> ruta dedicada
+  // Reportes (solo Admin)
   {
     path: 'admin/reports',
     canActivate: [authGuard, adminGuard],

@@ -2,6 +2,22 @@
   "version": 3,
   "targets": {
     "net8.0": {
+      "AspNet.Security.OAuth.GitHub/8.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/AspNet.Security.OAuth.GitHub.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/AspNet.Security.OAuth.GitHub.dll": {
+            "related": ".xml"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
+      },
       "Azure.Core/1.38.0": {
         "type": "package",
         "dependencies": {
@@ -1686,6 +1702,21 @@
     }
   },
   "libraries": {
+    "AspNet.Security.OAuth.GitHub/8.1.0": {
+      "sha512": "Gk0FlIFrUxl4btxUEllCkHyAUPYehYkwIm2rMoHlYUzJGnYt5pGzIM2THzxjEIkMhT4UuC3ne2pWxLXcofiPeQ==",
+      "type": "package",
+      "path": "aspnet.security.oauth.github/8.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "README.md",
+        "aspnet.security.oauth.github.8.1.0.nupkg.sha512",
+        "aspnet.security.oauth.github.nuspec",
+        "lib/net8.0/AspNet.Security.OAuth.GitHub.dll",
+        "lib/net8.0/AspNet.Security.OAuth.GitHub.xml"
+      ]
+    },
     "Azure.Core/1.38.0": {
       "sha512": "IuEgCoVA0ef7E4pQtpC3+TkPbzaoQfa77HlfJDmfuaJUCVJmn7fT0izamZiryW5sYUFKizsftIxMkXKbgIcPMQ==",
       "type": "package",
@@ -4948,6 +4979,7 @@
   },
   "projectFileDependencyGroups": {
     "net8.0": [
+      "AspNet.Security.OAuth.GitHub >= 8.1.0",
       "BCrypt.Net-Next >= 4.0.3",
       "Microsoft.AspNetCore.Authentication.JwtBearer >= 8.0.3",
       "Microsoft.AspNetCore.OpenApi >= 8.0.18",
@@ -4994,6 +5026,10 @@
       "net8.0": {
         "targetAlias": "net8.0",
         "dependencies": {
+          "AspNet.Security.OAuth.GitHub": {
+            "target": "Package",
+            "version": "[8.1.0, )"
+          },
           "BCrypt.Net-Next": {
             "target": "Package",
             "version": "[4.0.3, )"

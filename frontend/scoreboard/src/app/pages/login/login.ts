@@ -1,42 +1,57 @@
 // src/app/pages/login/login.ts
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { CommonModule, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
 import { AuthenticationService } from '../../core/services/authentication.service';
-import { CommonModule } from '@angular/common';
-import { LoginResponseDto } from '../../core/models/login-response.dto';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [CommonModule, FormsModule, NgIf],
   templateUrl: './login.html',
-  styleUrls: ['./login.css']
+  styleUrls: ['./login.css'],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
+  private auth = inject(AuthenticationService);
+  private router = inject(Router);
+
   username = '';
   password = '';
   errorMessage = '';
 
-  constructor(
-    private authService: AuthenticationService,
-    private router: Router,
-    private route: ActivatedRoute
-  ) {}
+  ngOnInit(): void {
+    // 👇 si ya hay token, saca al usuario de /login
+    const token = this.auth.getToken();
+    if (token) {
+      if (this.auth.isAdmin()) {
+        this.router.navigateByUrl('/admin');
+      } else {
+        this.router.navigateByUrl('/score/1');
+      }
+      return;
+    }
+  }
 
   onSubmit() {
-    this.authService.login(this.username, this.password).subscribe({
-      next: (res: LoginResponseDto) => {
-        this.authService.saveUser(res);
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
-        if (returnUrl) {
-          this.router.navigateByUrl(returnUrl);
-          return;
+    this.errorMessage = '';
+    this.auth.login(this.username, this.password).subscribe({
+      next: (resp) => {
+        this.auth.saveUser(resp);
+        if (this.auth.isAdmin()) {
+          this.router.navigateByUrl('/admin');
+        } else {
+          this.router.navigateByUrl('/score/1');
         }
-        const role = res.role?.name?.toLowerCase();
-        this.router.navigate([role === 'admin' ? '/admin' : '/score/1']);
       },
-      error: () => { this.errorMessage = 'Usuario o contraseña incorrectos'; }
+      error: (err: HttpErrorResponse) => {
+        this.errorMessage = err.error?.message || 'Usuario o contraseña inválidos.';
+      }
     });
+  }
+
+  onLoginWithGitHub() {
+    this.auth.githubLoginRedirect();
   }
 }
