@@ -1,0 +1,109 @@
+/* Paleta */
+:root {
+  --header-grad-start: #0c0b53;
+  --header-grad-end:   #1b073f;
+  --accent: #9b57ff;
+  --text-on-dark: #eef2ff;
+  --card-bg: #f5f7ff;
+}
+
+:host { display: block; }
+
+/* ===== HEADER con degradado ===== */
+.page-header {
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: var(--text-on-dark);
+  box-shadow: 0 10px 22px rgba(0,0,0,.22);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.header-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.title {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: .2px;
+  text-shadow: 0 1px 0 rgba(0,0,0,.4);
+}
+
+/* Botones del header */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .pill {
+    border-radius: 999px;
+    padding: 6px 14px;
+    height: 36px;
+    line-height: 24px;
+    border: 1px solid rgba(255,255,255,.25);
+    color: var(--text-on-dark);
+    backdrop-filter: blur(4px);
+    mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: 6px; }
+  }
+
+  .is-active { border-color: rgba(255,255,255,.45); }
+  .primary   { background: var(--accent); color: #fff; border-color: transparent; }
+  .logout    { background: #8b5cf6; color: #fff; border-color: transparent; }
+  .link      { color: #e5e7eb; }
+}
+
+/* ===== CONTENIDO ===== */
+.page-container {
+  max-width: 1100px;
+  margin: 18px auto;
+  padding: 0 16px 28px;
+}
+
+.surface {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 18px;
+}
+
+/* Form grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.full { width: 100%; }
+
+.actions-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+
+  .pill {
+    border-radius: 999px;
+    padding: 8px 16px;
+    mat-icon { margin-right: 6px; }
+  }
+  .primary { background: var(--accent); color: #fff; }
+}
+
+/* Mesa/desktop */
+@media (min-width: 720px) {
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  /* Hacer que Equipo y Acciones abarquen ancho completo */
+  mat-form-field.full:nth-of-type(3) { grid-column: 1 / -1; }
+  .actions-row { grid-column: 1 / -1; }
+}
+
+/* (por si alguna regla global pisa el gradiente) */
+:host header.page-header {
+  background: linear-gradient(90deg, #0c0b53, #1b073f) !important;
+  color: #eef2ff !important;
+}

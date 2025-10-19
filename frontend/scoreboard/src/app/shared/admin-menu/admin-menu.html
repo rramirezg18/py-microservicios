@@ -1,0 +1,14 @@
+<div class="admin-menu" *ngIf="isAdmin()">
+  <button mat-raised-button color="primary" (click)="goTo('/players')">
+    👥 Jugadores
+  </button>
+  <button mat-raised-button color="accent" (click)="goTo('/teams')">
+    🏀 Equipos
+  </button>
+  <button mat-raised-button color="warn" (click)="goTo('/tournaments')">
+    🏆 Torneos
+  </button>
+  <button mat-stroked-button color="basic" (click)="logout()">
+    🔒 Logout
+  </button>
+</div>

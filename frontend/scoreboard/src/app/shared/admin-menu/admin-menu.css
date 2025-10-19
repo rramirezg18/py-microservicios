@@ -1,0 +1,9 @@
+.admin-menu {
+  display: flex;
+  gap: 12px;
+  margin: 12px;
+}
+
+.admin-menu button {
+  font-weight: bold;
+}

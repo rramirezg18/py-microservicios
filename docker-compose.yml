@@ -1,107 +1,58 @@
-version: "3.9"
-
+# Compose v2 ya no necesita "version"
 services:
-  # === MySQL para auth-service (.NET) ===
-  db:
-    image: mysql:8.0
-    restart: unless-stopped
+  auth-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: auth-sql
     environment:
-      MYSQL_ROOT_PASSWORD: Perrito123
-      MYSQL_DATABASE: usuariosApp
-      MYSQL_USER: jin
-      MYSQL_PASSWORD: Pollito123
-      TZ: America/Guatemala
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=Guate!2025Siman
     ports:
-      - "3308:3306"
-    volumes:
-      - dbdata:/var/lib/mysql
+      - "1433:1433"
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -pPerrito123 || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 60
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $$SA_PASSWORD -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
 
-  # === API .NET ===
   auth-service:
     build:
       context: ./auth-service
-    depends_on:
-      db:
-        condition: service_healthy
+    container_name: auth-service
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__Default: >
-        Server=db;Port=3306;Database=usuariosApp;User=jin;Password=Pollito123;
-        TreatTinyAsBoolean=false;AllowPublicKeyRetrieval=True;SslMode=None
-      Jwt__Key: change_me_prod_super_secret_key_please
-      Jwt__Issuer: auth-service
-      Jwt__Audience: scoreboard-app
-      ASPNETCORE_URLS: http://+:8080
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=auth-sql,1433;Database=AuthDb;User Id=sa;Password=Guate!2025Siman;Encrypt=False;TrustServerCertificate=True;
+      # Rellena si vas a usar GitHub OAuth
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+    depends_on:
+      auth-sql:
+        condition: service_healthy
     ports:
-      - "5001:8080"   # http://localhost:5001
+      - "8080:8080"
     restart: unless-stopped
-    networks:
-      default:
-        aliases:
-          - api   # Nginx del frontend usará http://api:8080
 
-  # === Frontend Angular en Nginx ===
-  web:
+  tournament-service:
+    # Asumiendo que ya pusiste el Dockerfile en ./tournament-service
+    build:
+      context: ./tournament-service
+    container_name: tournament-service
+    environment:
+      - PORT=8082   # si tu servicio usa otro puerto interno, cámbialo AQUÍ y en nginx.conf
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    # Si tu tournament-service necesita DB, aquí agregas sus variables y depends_on
+
+  frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+    container_name: frontend
     depends_on:
       - auth-service
+      - tournament-service
     ports:
-      - "8083:80"     # http://localhost:8083
+      - "8081:80"
     restart: unless-stopped
-
-  # === PostgreSQL para teams-service ===
-  teams-db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: teamsBD
-      POSTGRES_USER: jonathan
-      POSTGRES_PASSWORD: Pollito123
-      TZ: America/Guatemala
-    ports:
-      - "5435:5432"   # para DBeaver
-    volumes:
-      - teams_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U jonathan -d teamsBD"]
-      interval: 5s
-      timeout: 3s
-      retries: 60
-
-  # === API Java Spring Boot ===
-  teams-service:
-    build:
-      context: ./teams-service
-      dockerfile: Dockerfile
-    depends_on:
-      teams-db:
-        condition: service_healthy
-    environment:
-      SERVER_PORT: 8082
-      SPRING_DATASOURCE_URL: jdbc:postgresql://teams-db:5432/teamsBD
-      SPRING_DATASOURCE_USERNAME: jonathan
-      SPRING_DATASOURCE_PASSWORD: Pollito123
-      players.service.base-url: http://players-service:8000/api
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
-
-      # 👇👇 **Nuevo**: ejecuta data.sql después de crear tablas
-      SPRING_SQL_INIT_MODE: always
-      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
-      # ^ con esto, primero Hibernate crea/actualiza el schema y luego se corre data.sql
-
-      # PLAYERS_SERVICE_BASE_URL: http://players-service:8000/api
-    ports:
-      - "8082:8082"   # http://localhost:8082
-    restart: unless-stopped
-
-volumes:
-  dbdata:
-  teams_pgdata:
