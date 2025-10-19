@@ -99,7 +99,8 @@ export const routes: Routes = [
     path: 'tournaments',
     canActivate: [authGuard, adminGuard],
     loadComponent: () =>
-      import('./pages/tournaments/tournaments').then(m => m.TournamentsComponent),
+  import('./pages/tournaments/tournaments.component').then(m => m.TournamentsComponent),
+
   },
 
   // SIEMPRE al final
