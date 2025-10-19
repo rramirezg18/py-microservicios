@@ -1,18 +1,27 @@
-# Usar una imagen oficial de Node.js como base
-FROM node:20-alpine
+# ==== Etapa 1: vendor con Composer ====
+FROM composer:2 AS vendor
+WORKDIR /app
+# Copiamos solo lo necesario para cachear deps
+COPY composer.json composer.lock ./
+# Instala dependencias de PHP sin dev; ignora reqs de plataforma para que no falle por extensiones
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --no-scripts --ignore-platform-reqs
 
-# Establecer el directorio de trabajo dentro del contenedor
-WORKDIR /usr/src/app
+# ==== Etapa 2: runtime con webdevops (Apache+PHP-FPM+supervisor) ====
+FROM webdevops/php-apache:8.2
 
-# Copiar el package.json y package-lock.json para instalar dependencias
-COPY package*.json ./
-RUN npm install
+# Laravel sirve desde /public
+ENV WEB_DOCUMENT_ROOT=/var/www/html/public
+WORKDIR /var/www/html
 
-# Copiar el resto de los archivos de la aplicación
+# Código + vendor generado en la etapa anterior
 COPY . .
+COPY --from=vendor /app/vendor /var/www/html/vendor
 
-# Exponer el puerto en el que corre la aplicación
-EXPOSE 3001
+# Entrypoint propio (genera .env, APP_KEY, espera MySQL, corre migraciones)
+COPY docker/players-entrypoint.sh /usr/local/bin/players-entrypoint.sh
+RUN chmod +x /usr/local/bin/players-entrypoint.sh
 
-# Comando para ejecutar la aplicación (¡Esta es la línea que cambiamos!)
-CMD [ "npx", "nodemon", "src/app.js" ]
+# Muy importante: tu entrypoint DEBE encadenar al de webdevops (/entrypoint)
+ENTRYPOINT ["/usr/local/bin/players-entrypoint.sh"]
+# Dejamos el CMD por defecto de la base (supervisord). Si prefieres, explícitalo:
+CMD ["supervisord"]
