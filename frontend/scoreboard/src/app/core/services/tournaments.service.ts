@@ -1,45 +1,41 @@
-import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
-
-export interface Tournament {
-  id: number;
-  name: string;
-  season?: string;
-  status?: string; // Scheduled | Live | Finished | etc
-}
-
-export interface Page<T> {
-  items: T[];
-  totalCount: number;
-}
-
-export interface TournamentsQuery {
-  page?: number;
-  pageSize?: number;
-  q?: string;
-}
+// src/app/core/services/tournaments.service.ts
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import {
+  TournamentSummary,
+  TournamentViewModel,
+  UpdateMatchRequest
+} from '../../pages/tournaments/tournaments.models';
 
 @Injectable({ providedIn: 'root' })
-export class TournamentsService {
-  private apiUrl = '/api/tournaments';
+export class TournamentsApiService {
+  private readonly http = inject(HttpClient);
+  // Usa el proxy dev ya configurado (proxy.conf.json) => http://localhost:5220
+  private readonly base = '/api';
 
-  constructor(private http: HttpClient) {}
+  listTournaments(): Promise<TournamentSummary[]> {
+    return firstValueFrom(
+      this.http.get<TournamentSummary[]>(`${this.base}/tournaments`)
+    );
+  }
 
-  list(query: TournamentsQuery): Observable<Page<Tournament>> {
-    let params = new HttpParams()
-      .set('page', String(query.page ?? 1))
-      .set('pageSize', String(query.pageSize ?? 10));
+  getTournament(id: string): Promise<TournamentViewModel> {
+    return firstValueFrom(
+      this.http.get<TournamentViewModel>(`${this.base}/tournaments/${id}`)
+    );
+  }
 
-    if (query.q) params = params.set('q', query.q);
-
-    return this.http.get<Page<Tournament> | Tournament[]>(this.apiUrl, { params })
-      .pipe(
-        map(res =>
-          Array.isArray(res)
-            ? { items: res, totalCount: res.length }
-            : { items: res.items ?? [], totalCount: res.totalCount ?? (res.items?.length ?? 0) }
-        )
-      );
+  updateMatch(
+    tournamentId: string,
+    matchId: string,
+    payload: UpdateMatchRequest
+  ): Promise<TournamentViewModel> {
+    return firstValueFrom(
+      this.http.patch<TournamentViewModel>(
+        `${this.base}/tournaments/${tournamentId}/matches/${matchId}`,
+        payload
+      )
+    );
   }
 }

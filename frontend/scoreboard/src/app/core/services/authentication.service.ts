@@ -14,7 +14,7 @@ export class AuthenticationService {
   private platformId = inject(PLATFORM_ID);
 
   // Base del API desde environment
-  private baseUrl = environment.apiUrl;
+  private baseUrl = environment.apiBaseUrl;
   private apiUrl = `${this.baseUrl}/api/auth`;
 
   private storage(): Storage | null {
