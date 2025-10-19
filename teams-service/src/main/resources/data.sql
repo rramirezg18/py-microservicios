@@ -1,7 +1,5 @@
-INSERT INTO teams (id, name, coach, city)
-VALUES
-    (1, 'Sharks', 'Laura Martínez', 'Valencia'),
-    (2, 'Falcons', 'Diego Herrera', 'Madrid'),
-    (3, 'Titans', 'María Gómez', 'Bilbao'),
-    (4, 'Warriors', 'Javier Ruiz', 'Barcelona')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO teams (name, coach, city) VALUES
+('Sharks','Laura Martínez','Valencia'),
+('Falcons','Diego Herrera','Madrid'),
+('Titans','María Gómez','Bilbao'),
+('Warriors','Javier Ruiz','Barcelona');

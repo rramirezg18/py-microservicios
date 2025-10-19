@@ -1,10 +1,10 @@
+using System.Security.Claims;
 using System.Text;
-using AuthService.Application.Abstractions;
-using AuthService.Application.Options;
-using AuthService.Infrastructure.Persistence;
-using AuthService.Infrastructure.Persistence.Seed;
-using AuthService.Infrastructure.Security;
-using AuthService.Infrastructure.Services;
+using AuthService.Data;
+using AuthService.Repositories;
+using AuthService.Repositories.Interfaces;
+using AuthService.Services;
+using AuthService.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -12,89 +12,80 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ===== Options (JWT) =====
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
-var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key));
-
-// ===== DbContext (MySQL con Pomelo) =====
-var cs = builder.Configuration.GetConnectionString("Default");
-builder.Services.AddDbContext<AuthDbContext>(opt =>
+// 1) Controllers + Swagger
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
 {
-    opt.UseMySql(cs, ServerVersion.AutoDetect(cs));
-    opt.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    // JWT en Swagger
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "auth-service", Version = "v1" });
+    var jwtScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Bearer {token}",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+    };
+    c.AddSecurityDefinition("Bearer", jwtScheme);
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        { jwtScheme, Array.Empty<string>() }
+    });
 });
 
-// ===== Servicios (DI) =====
-builder.Services.AddSingleton<PasswordHasher>();
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IAuthService, AuthService.Infrastructure.Services.AuthService>();
+// 2) DB (SQL Server por defecto)
+var cs = builder.Configuration.GetConnectionString("DefaultConnection")
+         ?? "Server=localhost,1433;Database=AuthDb;User Id=sa;Password=Your_strong_password_123;TrustServerCertificate=true;";
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs));
 
-builder.Services.AddControllers();
+// 3) DI (Repos + Services)
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IRoleRepository, RoleRepository>();
+builder.Services.AddScoped<IMenuRepository, MenuRepository>();
 
-// ===== Auth: JWT Bearer =====
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opt =>
+builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IMenuService, MenuService>();
+
+// 4) JWT
+var jwt = builder.Configuration.GetSection("Jwt");
+var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"] ?? "SuperSecretKey123"));
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
     {
-        opt.RequireHttpsMetadata = false;
-        opt.TokenValidationParameters = new TokenValidationParameters
+        o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
             ValidateAudience = true,
-            ValidAudience = jwt.Audience,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = signingKey,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromSeconds(30)
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt["Issuer"] ?? "auth-service",
+            ValidAudience = jwt["Audience"] ?? "scoreboard",
+            IssuerSigningKey = key,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            NameClaimType = ClaimTypes.Name,
+            RoleClaimType = ClaimTypes.Role
         };
     });
 
 builder.Services.AddAuthorization();
 
-// ===== Swagger =====
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(opt =>
+// 5) CORS (ajusta orígenes si quieres)
+builder.Services.AddCors(p =>
 {
-    opt.SwaggerDoc("v1", new OpenApiInfo { Title = "Auth Service", Version = "v1" });
-    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header
-    });
-    opt.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
-        }
-    });
-});
-
-// ===== CORS dev =====
-builder.Services.AddCors(opt =>
-{
-    opt.AddPolicy("dev", p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+    p.AddPolicy("default", b => b
+        .AllowAnyOrigin()
+        .AllowAnyHeader()
+        .AllowAnyMethod());
 });
 
 var app = builder.Build();
 
-// Migración/seed al arrancar
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
-    var hasher = scope.ServiceProvider.GetRequiredService<PasswordHasher>();
-    await db.Database.MigrateAsync();
-    await DbSeeder.RunAsync(db, hasher);
-}
-
+// Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -102,9 +93,18 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("dev");
+app.UseCors("default");
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
+// Health
+app.MapGet("/health", () => Results.Ok(new
+{
+    service = "auth-service",
+    status = "ok",
+    time = DateTime.UtcNow
+}));
 
 app.Run();

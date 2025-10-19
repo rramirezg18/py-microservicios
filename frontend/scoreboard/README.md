@@ -1,74 +1,59 @@
-# Scoreboard Frontend (Angular)
+# Scoreboard
 
-Aplicación web en Angular para mostrar y administrar el marcador en vivo de los partidos de la liga. Incluye:
+This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.0.
 
-- **Marcador en vivo** con panel HUD, posesión, período y reloj principal/tiempos muertos.
-- **Panel de control** para operarios con controles de reloj, posesión, puntos y faltas.
-- **Panel administrativo** con accesos rápidos a jugadores, equipos, torneos y panel de control.
-- **Autenticación** con registro/inicio de sesión y protección por roles (usuarios y administradores).
-- **Vistas de marcador públicas** y vistas de gestión detrás de autenticación.
+## Development server
 
-## Requisitos
-
-- Node.js 20+
-- npm 10+
-
-## Scripts disponibles
-
-Instala dependencias:
+To start a local development server, run:
 
 ```bash
-npm install
+ng serve
 ```
 
-Servidor de desarrollo (escucha en `http://localhost:4200/`):
+Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+## Code scaffolding
+
+Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
 
 ```bash
-npm run dev
-# o
-npm start
+ng generate component component-name
 ```
 
-Compilación de producción (artefactos en `dist/scoreboard`):
+For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
 
 ```bash
-npm run build
+ng generate --help
 ```
 
-Previsualización de la build de producción:
+## Building
+
+To build the project run:
 
 ```bash
-npm run preview
+ng build
 ```
 
-Pruebas unitarias con Karma:
+This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+
+## Running unit tests
+
+To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
 
 ```bash
-npm test
+ng test
 ```
 
-Chequeo rápido de tipos (útil como lint liviano):
+## Running end-to-end tests
+
+For end-to-end (e2e) testing, run:
 
 ```bash
-npm run lint
+ng e2e
 ```
 
-## Estructura destacada
+Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
-- `src/app/core`: Servicios de autenticación, estado del marcador, utilidades y guards.
-- `src/app/features`: Componentes autónomos para cada vista (marcador, panel de control, login, etc.).
-- `src/app/shared`: Componentes reutilizables como HUD, paneles del marcador, etc.
-- `src/styles.css`: Variables y estilos globales del proyecto.
+## Additional Resources
 
-## Integración con backend
-
-Las solicitudes de autenticación consumen el backend mediante las variables de entorno opcionales:
-
-- `NG_APP_API_BASE_URL` (o `VITE_API_BASE_URL`) para la URL base.
-- `NG_APP_DEV_API_FALLBACK` (o `VITE_DEV_API_FALLBACK`) como fallback durante desarrollo cuando se usa una ruta relativa.
-
-Si no se definen, se utiliza `/api` como base (ideal cuando el frontend se sirve detrás del mismo dominio que los servicios).
-
----
-
-Este proyecto fue generado con Angular CLI 20 y adaptado para reemplazar la anterior implementación en React.
+For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

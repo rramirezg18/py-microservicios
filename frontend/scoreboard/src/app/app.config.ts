@@ -1,19 +1,31 @@
-import {
-  ApplicationConfig,
-  provideBrowserGlobalErrorListeners,
-  provideZoneChangeDetection
-} from '@angular/core';
+import { ApplicationConfig, APP_INITIALIZER, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-
 import { routes } from './app.routes';
-import { authInterceptor } from './core/interceptors/auth.interceptor';
+
+import { provideClientHydration } from '@angular/platform-browser';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+
+import { authTokenInterceptor } from './core/interceptors/auth-token.interceptor';
+import { installStorageDebugging } from './core/debug/debug-storage';
+
+function initDebugFactory() {
+  const platformId = inject(PLATFORM_ID);
+  return () => {
+    if (isPlatformBrowser(platformId)) {
+      installStorageDebugging();
+      console.log('[DEBUG] storage spy installed');
+    }
+  };
+}
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideBrowserGlobalErrorListeners(),
-    provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor]))
-  ]
+    provideClientHydration(),
+    provideHttpClient(withFetch(), withInterceptors([authTokenInterceptor])),
+    provideNoopAnimations(),
+    { provide: APP_INITIALIZER, useFactory: initDebugFactory, deps: [], multi: true },
+  ],
 };

@@ -1,80 +1,100 @@
+// src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
-import { guestGuard } from './core/guards/guest.guard';
-import { roleGuard } from './core/guards/role.guard';
+import { adminGuard } from './core/guards/admin.guard';
 
 export const routes: Routes = [
+  { path: '', redirectTo: 'login', pathMatch: 'full' },
+
+  // Login
   {
     path: 'login',
-    canActivate: [guestGuard],
     loadComponent: () =>
-      import('./features/auth/login/login.component').then((m) => m.LoginComponent)
+      import('./pages/login/login').then(m => m.LoginComponent),
+  },
+
+  // Redirecciones cuando faltan IDs
+  { path: 'score', pathMatch: 'full', redirectTo: 'score/1' },
+  { path: 'control', pathMatch: 'full', redirectTo: 'control/1' },
+
+  // Dashboard admin (solo Admin)
+  {
+    path: 'admin',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./pages/admin/admin-dashboard').then(m => m.AdminDashboardComponent),
+  },
+
+  // Reportes (solo Admin) -> ruta dedicada
+  {
+    path: 'admin/reports',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./pages/admin/reports/reports-page').then(m => m.ReportsPage),
+  },
+
+  // Score y Control (sólo autenticado)
+  {
+    path: 'score/:id',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/scoreboard/scoreboard/scoreboard').then(m => m.ScoreboardComponent),
   },
   {
-    path: '',
+    path: 'control/:id',
     canActivate: [authGuard],
-    children: [
-      { path: '', pathMatch: 'full', redirectTo: 'scoreboard' },
-      {
-        path: 'scoreboard',
-        loadComponent: () =>
-          import('./features/scoreboard/scoreboard.component').then((m) => m.ScoreboardComponent)
-      },
-      {
-        path: 'scoreboard/:matchId',
-        loadComponent: () =>
-          import('./features/scoreboard/scoreboard.component').then((m) => m.ScoreboardComponent)
-      },
-      {
-        path: 'control',
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'control'] },
-        loadComponent: () =>
-          import('./features/control/control-panel.component').then((m) => m.ControlPanelComponent)
-      },
-      {
-        path: 'control/:matchId',
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'control'] },
-        loadComponent: () =>
-          import('./features/control/control-panel.component').then((m) => m.ControlPanelComponent)
-      },
-      {
-        path: 'admin',
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] },
-        loadComponent: () =>
-          import('./features/admin/admin-dashboard.component').then((m) => m.AdminDashboardComponent)
-      },
-      {
-        path: 'players',
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] },
-        loadComponent: () =>
-          import('./features/players/players.component').then((m) => m.PlayersComponent)
-      },
-      {
-        path: 'teams',
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] },
-        loadComponent: () =>
-          import('./features/teams/teams.component').then((m) => m.TeamsComponent)
-      },
-      {
-        path: 'matches',
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] },
-        loadComponent: () =>
-          import('./features/matches/matches-admin.component').then((m) => m.MatchesAdminComponent)
-      },
-      {
-        path: 'tournaments',
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] },
-        loadComponent: () =>
-          import('./features/tournaments/tournaments.component').then((m) => m.TournamentsComponent)
-      }
-    ]
+    loadComponent: () =>
+      import('./features/control/control-panel/control-panel').then(m => m.ControlPanelComponent),
   },
-  { path: '**', redirectTo: 'scoreboard' }
+
+  // Players (solo Admin)
+  {
+    path: 'players',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/players/players-list/players-list').then(m => m.PlayersListComponent),
+  },
+  {
+    path: 'players/create',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/players/player-form/player-form').then(m => m.PlayerFormComponent),
+  },
+  {
+    path: 'players/edit/:id',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/players/player-form/player-form').then(m => m.PlayerFormComponent),
+  },
+
+  // Teams (solo Admin)
+  {
+    path: 'teams',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/teams/teams-list/teams-list').then(m => m.TeamsListComponent),
+  },
+  {
+    path: 'teams/create',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/teams/team-form/team-form').then(m => m.TeamFormComponent),
+  },
+  {
+    path: 'teams/edit/:id',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./components/teams/team-form/team-form').then(m => m.TeamFormComponent),
+  },
+
+  // Torneos (solo Admin)
+  {
+    path: 'tournaments',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () =>
+      import('./pages/tournaments/tournaments').then(m => m.TournamentsComponent),
+  },
+
+  // SIEMPRE al final
+  { path: '**', redirectTo: 'login' },
 ];

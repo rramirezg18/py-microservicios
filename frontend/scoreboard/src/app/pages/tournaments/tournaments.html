@@ -1,0 +1,193 @@
+<!-- HEADER degradado (jean) -->
+<header class="page-header">
+  <div class="header-inner">
+    <h1 class="title">Gestión de Torneos</h1>
+
+    <nav class="actions">
+      <a mat-stroked-button class="pill" routerLink="/teams">
+        <mat-icon>sports_basketball</mat-icon>
+        Equipos
+      </a>
+
+      <a mat-stroked-button class="pill" routerLink="/players">
+        <mat-icon>groups</mat-icon>
+        Jugadores
+      </a>
+
+      <a mat-button class="link" routerLink="/admin">Admin</a>
+
+      <button mat-raised-button class="pill logout" routerLink="/login">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- CONTENIDO -->
+<div class="page-container">
+  <!-- Formulario de programación -->
+  <mat-card class="surface mat-elevation-z3">
+    <h2 class="section-title">Programar partido</h2>
+
+    <form [formGroup]="form" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Equipo local</mat-label>
+        <mat-select formControlName="homeTeamId" (selectionChange)="onHomeTeamChange()">
+          <mat-option [value]="null">— Seleccionar —</mat-option>
+          <mat-option *ngFor="let t of teams()" [value]="t.id">{{ t.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Equipo visitante</mat-label>
+        <mat-select formControlName="awayTeamId" (selectionChange)="onAwayTeamChange()">
+          <mat-option [value]="null">— Seleccionar —</mat-option>
+          <mat-option *ngFor="let t of teams()" [value]="t.id">{{ t.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Fecha del partido</mat-label>
+        <input matInput [matDatepicker]="dp" formControlName="dateMatch" />
+        <mat-datepicker-toggle matSuffix [for]="dp"></mat-datepicker-toggle>
+        <mat-datepicker #dp></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Duración del cuarto (seg)</mat-label>
+        <input matInput type="number" formControlName="quarterDurationSeconds" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estado</mat-label>
+        <mat-select formControlName="status">
+          <mat-option [value]="'Scheduled'">Programado</mat-option>
+          <mat-option [value]="'Live'">En juego</mat-option>
+          <mat-option [value]="'Finished'">Finalizado</mat-option>
+          <mat-option [value]="'Canceled'">Cancelado</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Roster Local</mat-label>
+        <mat-select formControlName="homeRoster" multiple>
+          <mat-option *ngFor="let p of homePlayers()" [value]="p.id">{{ p.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="wide">
+        <mat-label>Roster Visitante</mat-label>
+        <mat-select formControlName="awayRoster" multiple>
+          <mat-option *ngFor="let p of awayPlayers()" [value]="p.id">{{ p.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="actions-row wide">
+        <button
+          mat-raised-button
+          color="primary"
+          class="pill primary"
+          (click)="programMatch()"
+          [disabled]="form.invalid">
+          <mat-icon>event_available</mat-icon>
+          Programar partido
+        </button>
+      </div>
+    </form>
+  </mat-card>
+
+  <!-- Listado -->
+  <mat-card class="surface mat-elevation-z2">
+    <div class="list-toolbar">
+      <button mat-stroked-button (click)="searchBox.focus()">
+        <mat-icon>search</mat-icon>&nbsp;Filtrar
+      </button>
+
+      <span class="spacer"></span>
+
+      <mat-form-field appearance="outline" class="search">
+        <mat-label>Buscar partido</mat-label>
+        <input #searchBox matInput placeholder="Equipo o estado…" [formControl]="search" />
+      </mat-form-field>
+
+      <div class="total" *ngIf="!loading()">Total: {{ paginatorLength() }}</div>
+    </div>
+
+    <div class="loading" *ngIf="loading()">Cargando partidos…</div>
+
+    <div class="table-wrap mat-elevation-z1" *ngIf="!loading()">
+      <table mat-table [dataSource]="rows()" class="full">
+        <ng-container matColumnDef="dateMatch">
+          <th mat-header-cell *matHeaderCellDef>Fecha</th>
+          <td mat-cell *matCellDef="let row">{{ row.dateMatch | date:'medium' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let row">{{ row.status }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="home">
+          <th mat-header-cell *matHeaderCellDef>Local</th>
+          <td mat-cell *matCellDef="let row">{{ row.homeTeam }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="away">
+          <th mat-header-cell *matHeaderCellDef>Visita</th>
+          <td mat-cell *matCellDef="let row">{{ row.awayTeam }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="score">
+          <th mat-header-cell *matHeaderCellDef>Marcador</th>
+          <td mat-cell *matCellDef="let row">{{ row.homeScore }} - {{ row.awayScore }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="fouls">
+          <th mat-header-cell *matHeaderCellDef>Faltas</th>
+          <td mat-cell *matCellDef="let row">{{ row.homeFouls }} - {{ row.awayFouls }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let row">
+            <button
+              mat-stroked-button
+              color="primary"
+              [routerLink]="['/control', row.id]"
+              *ngIf="
+                row.status === 'Scheduled' || row.status === 'Live' ||
+                row.status === 'Programado' || row.status === 'En juego'
+              ">
+              Jugar
+            </button>
+
+            <button
+              mat-stroked-button
+              color="accent"
+              (click)="finishSim(row)"
+              *ngIf="row.status !== 'Finished' && row.status !== 'Finalizado'">
+              Simular y finalizar
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <div class="empty" *ngIf="!loading() && rows().length === 0">
+      No hay partidos para mostrar.
+    </div>
+
+    <mat-paginator
+      [length]="paginatorLength()"
+      [pageIndex]="pageIndex()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5,10,20,50]"
+      [showFirstLastButtons]="true"
+      (page)="pageChange($event)">
+    </mat-paginator>
+  </mat-card>
+</div>

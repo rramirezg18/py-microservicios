@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   # === MySQL para auth-service (.NET) ===
   db:
@@ -102,6 +100,50 @@ services:
       - "8082:8082"   # http://localhost:8082
     restart: unless-stopped
 
+
+  players-db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass123
+      MYSQL_DATABASE: playersBD
+      MYSQL_USER: Robert
+      MYSQL_PASSWORD: Pollito123
+      TZ: America/Guatemala
+    ports:
+      - "3309:3306"
+    volumes:
+      - players_dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -prootpass123 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+
+  players-service:
+    build:
+      context: ./players-service
+      dockerfile: Dockerfile
+    depends_on:
+      players-db:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mysql
+      DB_HOST: players-db
+      DB_PORT: 3306
+      DB_DATABASE: playersBD
+      DB_USERNAME: Robert
+      DB_PASSWORD: Pollito123
+    ports:
+      - "8000:80"
+    restart: unless-stopped
+
+
 volumes:
   dbdata:
   teams_pgdata:
+  players_dbdata:
+

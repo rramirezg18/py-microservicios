@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+
+use Illuminate\Contracts\Foundation\MaintenanceMode as MaintenanceModeContract;
 use Illuminate\Foundation\MaintenanceMode\FileMaintenanceMode;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -13,12 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // Middleware globales (si los necesitas)
+        //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Manejo de excepciones globales
+        //
     })
-    ->create(function ($app) {
-        // ✅ Registrar directamente FileMaintenanceMode sin contrato
-        $app->singleton(FileMaintenanceMode::class);
+    ->create(function (Application $app) {
+        // 🔧 Enlaza el contrato al driver de archivo (evita el 500 por mantenimiento)
+        $app->singleton(MaintenanceModeContract::class, FileMaintenanceMode::class);
     });

@@ -1,0 +1,117 @@
+<!-- HEADER -->
+<header class="page-header">
+  <div class="header-inner">
+    <h1 class="title">Lista de Jugadores</h1>
+
+    <nav class="actions">
+      <a mat-stroked-button class="pill is-active" routerLink="/players">
+        <mat-icon>groups</mat-icon>
+        Jugadores
+      </a>
+
+      <a mat-stroked-button class="pill" routerLink="/tournaments">
+        <mat-icon>emoji_events</mat-icon>
+        Torneos
+      </a>
+
+      <a mat-raised-button color="primary" class="pill primary" routerLink="/players/create">
+        <mat-icon>add</mat-icon>
+        Nuevo Jugador
+      </a>
+
+      <a mat-button class="link" routerLink="/admin">Admin</a>
+
+      <button mat-raised-button class="pill logout" (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        Logout
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- CONTENIDO -->
+<div class="page-container">
+  <mat-card class="mat-elevation-z3 surface">
+    <!-- Filtros -->
+    <div class="filters">
+      <mat-form-field appearance="outline" class="flex1">
+        <mat-label>Buscar jugador</mat-label>
+        <input
+          matInput
+          [(ngModel)]="search"
+          (keyup.enter)="applyFilter()"
+          placeholder="Nombre o número" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="w200">
+        <mat-label>ID de Equipo</mat-label>
+        <input
+          matInput
+          type="number"
+          [(ngModel)]="teamId"
+          (keyup.enter)="applyFilter()"
+          placeholder="Ej: 1" />
+      </mat-form-field>
+
+      <button mat-stroked-button color="primary" class="pill" (click)="applyFilter()">
+        <mat-icon>search</mat-icon>
+        Filtrar
+      </button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-wrap mat-elevation-z1">
+      <table mat-table [dataSource]="dataSource" class="full-width-table">
+        <!-- ID -->
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef>ID</th>
+          <td mat-cell *matCellDef="let p">{{ p.id }}</td>
+        </ng-container>
+
+        <!-- Número -->
+        <ng-container matColumnDef="number">
+          <th mat-header-cell *matHeaderCellDef>Número</th>
+          <td mat-cell *matCellDef="let p">{{ p.number }}</td>
+        </ng-container>
+
+        <!-- Nombre -->
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Nombre</th>
+          <td mat-cell *matCellDef="let p">{{ p.name }}</td>
+        </ng-container>
+
+        <!-- Equipo -->
+        <ng-container matColumnDef="teamName">
+          <th mat-header-cell *matHeaderCellDef>Equipo</th>
+          <td mat-cell *matCellDef="let p">{{ p.teamName }}</td>
+        </ng-container>
+
+        <!-- Acciones -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let p">
+            <button mat-icon-button color="primary" [routerLink]="['/players/edit', p.id]">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deletePlayer(p.id)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <!-- Paginador -->
+    <mat-paginator
+      [length]="totalItems"
+      [pageSize]="pageSize"
+      [pageIndex]="page - 1"
+      [pageSizeOptions]="[5,10,20]"
+      showFirstLastButtons
+      (page)="onPageChange($event)">
+    </mat-paginator>
+  </mat-card>
+</div>

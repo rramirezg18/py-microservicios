@@ -1,16 +1,18 @@
-import { inject } from '@angular/core';
+import { inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router } from '@angular/router';
-import { AuthService } from '../services/auth.service';
+import { AuthenticationService } from '../services/authentication.service';
 
 export const authGuard: CanActivateFn = (_route, state) => {
-  const auth = inject(AuthService);
+  const platformId = inject(PLATFORM_ID);
+  const auth = inject(AuthenticationService);
   const router = inject(Router);
 
-  if (auth.isAuthenticated()) {
-    return true;
-  }
+  if (!isPlatformBrowser(platformId)) return true;
 
-  return router.createUrlTree(['/login'], {
-    queryParams: { returnUrl: state.url }
-  });
+  const token = auth.getToken();
+  if (token) return true; // deja pasar, el backend validará
+
+  // Solo redirige. ❌ NO hagas logout aquí.
+  return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
 };

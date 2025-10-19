@@ -1,0 +1,156 @@
+/* ==== Merge jean + main ==== */
+
+/* Paleta consistente (jean) */
+:root {
+  --header-grad-start: #0c0b53;
+  --header-grad-end: #1b073f;
+  --accent: #9b57ff;
+  --text-on-dark: #eef2ff;
+  --card-bg: #f5f7ff;
+}
+
+/* === Base / contenedor (main) === */
+:host {
+  display: block;
+  padding: 12px 8px;
+  background: #f7f7fa;
+}
+
+/* ===== HEADER degradado ===== */
+.page-header {
+  background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
+  color: var(--text-on-dark);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .22);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+}
+
+/* Título dentro del header: más fuerte y sin márgenes */
+.page-header .title {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: .2px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .4);
+}
+
+/* Títulos generales fuera del header (main) */
+.title {
+  margin: 16px 0 8px;
+  font-weight: 600;
+}
+
+/* Pills del header */
+.actions { display: flex; align-items: center; gap: 10px; }
+.actions .pill {
+  border-radius: 999px;
+  padding: 6px 14px;
+  height: 36px;
+  line-height: 24px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: var(--text-on-dark);
+  backdrop-filter: blur(4px);
+}
+.actions .pill mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: 6px; }
+.actions .primary { background: var(--accent); color: #fff; border-color: transparent; }
+.actions .logout { background: #8b5cf6; color: #fff; border-color: transparent; }
+.actions .link { color: #e5e7eb; }
+
+/* ===== CONTENIDO ===== */
+.page-container { max-width: 1200px; margin: 18px auto; padding: 0 16px 28px; }
+.surface { background: var(--card-bg); border-radius: 16px; padding: 18px; }
+
+/* Secciones */
+.section-title { margin: 0 0 6px; font-weight: 700; }
+
+/* === Grid del form (jean) === */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 12px 16px;
+  align-items: start;
+}
+.form-grid .wide { grid-column: 1 / -1; }
+
+/* === Form de programación (main) === */
+.fullwidth { width: 100%; }
+
+.tourn-form .row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+  margin-bottom: 8px;
+}
+
+.tourn-form .row + .row {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+}
+
+.tourn-form mat-form-field { width: 100%; }
+.tourn-form .roster { min-width: 280px; }
+
+/* Acciones */
+.actions-row { display: flex; gap: 10px; margin-top: 8px; }
+.actions-row .pill { border-radius: 999px; padding: 8px 16px; }
+.actions-row .pill mat-icon { margin-right: 6px; }
+.actions-row .primary { background: var(--accent); color: #fff; }
+
+/* === Toolbar listado === */
+.list-toolbar { display: flex; align-items: center; gap: 12px; margin: 6px 0 12px; }
+.flex1 { flex: 1 1 420px; min-width: 260px; }
+.spacer { flex: 1; }
+.total { font-weight: 600; }
+.list-toolbar .search { width: clamp(220px, 32vw, 360px); }
+.list-toolbar button[mat-stroked-button] {
+  border-radius: 999px;
+  padding: 6px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* === Tabla === */
+.table-wrap { overflow: hidden; border-radius: 12px; background: #fff; }
+.full { width: 100%; }
+table[mat-table] { background: #fff; border-radius: 12px; overflow: hidden; }
+th[mat-header-cell] { font-weight: 700; color: #374151; }
+td[mat-cell], th[mat-header-cell] { padding: 12px 16px !important; }
+
+/* === Estados === */
+.loading { padding: 16px; color: #6b7280; }
+.empty { padding: 16px; color: #6b7280; text-align: center; }
+
+/* === Paginador === */
+mat-paginator { margin-top: 8px; background: transparent; }
+
+/* === Responsive === */
+@media (max-width: 1200px) {
+  .tourn-form .row { grid-template-columns: repeat(3, minmax(200px, 1fr)); }
+}
+@media (max-width: 820px) {
+  .tourn-form .row { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+  .list-toolbar { flex-wrap: wrap; }
+  .list-toolbar .spacer { display: none; }
+}
+@media (max-width: 560px) {
+  .tourn-form .row,
+  .tourn-form .row + .row { grid-template-columns: 1fr; }
+  .list-toolbar .search { width: 100%; }
+}
+
+/* Refuerzo del degradado ante overrides globales (jean) */
+:host header.page-header {
+  background: linear-gradient(90deg, #0c0b53, #1b073f) !important;
+  color: #eef2ff !important;
+}
