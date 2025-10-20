@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "ejmJiKNfgGH6qQlA+5FG2qRbiQvHHV2nD7b89c0PLdmb4gyAkS4lP/pNlRKUSIwBvx1+w6E6yESamGHeBtu1JA==",
+  "dgSpecHash": "2dZKSBWPj6m70cU8BkR0PdPUPPdHSSdtFHTrteU1J4FXgv2igyNzBk2vg//Jr8OazIlR9+PSDcKFo13q9gMEdw==",
   "success": true,
   "projectFilePath": "/home/roberto/Escritorio/py-microservicios/auth-service/AuthService.csproj",
   "expectedPackageFiles": [

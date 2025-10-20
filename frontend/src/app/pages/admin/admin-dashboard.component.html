@@ -1,0 +1,80 @@
+<ng-container *ngIf="isAdmin">
+  <!-- Barra superior -->
+  <div class="admin-hero">
+    <div class="hero-content">
+      <div class="hero-titles">
+        <h1>Panel de Administración</h1>
+        <p>Elige una sección</p>
+      </div>
+
+      <div #logoutWrap class="logout-wrap">
+        <button class="hero-logout" (click)="toggleLogout($event)">
+          <span class="ico">⎋</span> Logout
+        </button>
+
+        <div class="logout-menu" [class.open]="logoutOpen">
+          <button class="menu-item" (click)="logout()">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenido principal -->
+  <div class="admin-wrap">
+    <section class="cards">
+      <a class="card" [routerLink]="['/scoreboard', matchId]">
+        <div class="icon">📊</div>
+        <div class="meta">
+          <h3 class="title">Scoreboard</h3>
+          <p class="desc">Ver marcador en vivo</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+
+      <a class="card" [routerLink]="['/control', matchId]">
+        <div class="icon">🎛️</div>
+        <div class="meta">
+          <h3 class="title">Control</h3>
+          <p class="desc">Panel del operador</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+
+      <a class="card" routerLink="/players">
+        <div class="icon">👥</div>
+        <div class="meta">
+          <h3 class="title">Players</h3>
+          <p class="desc">Gestiona el plantel</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+
+      <a class="card" routerLink="/teams">
+        <div class="icon">🏀</div>
+        <div class="meta">
+          <h3 class="title">Teams</h3>
+          <p class="desc">Crea y edita equipos</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+
+      <a class="card" routerLink="/tournaments">
+        <div class="icon">🏆</div>
+        <div class="meta">
+          <h3 class="title">Tournaments</h3>
+          <p class="desc">Programa y administra partidos</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+
+      <a class="card" routerLink="/reports">
+        <div class="icon">📄</div>
+        <div class="meta">
+          <h3 class="title">Reports</h3>
+          <p class="desc">PDFs de equipos, jugadores y partidos</p>
+        </div>
+        <div class="chev">›</div>
+      </a>
+    </section>
+  </div>
+</ng-container>

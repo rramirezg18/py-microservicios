@@ -1,0 +1,28 @@
+{
+  "/api": {
+    "target": "http://localhost:5220",
+    "secure": false
+  },
+  "/api/teams": {
+    "target": "http://localhost:5001",
+    "secure": false
+  },
+  "/api/players": {
+    "target": "http://localhost:5002",
+    "secure": false
+  },
+  "/api/tournaments": {
+    "target": "http://localhost:5003",
+    "secure": false
+  },
+  "/api/reports": {
+    "target": "http://localhost:5004",
+    "secure": false
+  },
+   "/hubs": {
+    "target": "http://localhost:5220",
+    "ws": true,
+    "secure": false,
+    "changeOrigin": true
+  }
+}

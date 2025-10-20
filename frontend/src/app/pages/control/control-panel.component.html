@@ -1,0 +1,47 @@
+<div class="cp-hero">
+  <div class="wrap">
+    <div class="crumbs">
+      <button class="pill ghost" (click)="goBack()">← Volver</button>
+      <span class="sep">/</span>
+      <span class="muted">Panel de Control</span>
+    </div>
+
+    <h1>Control del Partido</h1>
+    <p class="sub">Gestiona el reloj, puntos, faltas y período en vivo.</p>
+
+    <div class="hero-actions">
+      <button class="pill" (click)="goScoreboard()">🎯 Ver Scoreboard</button>
+      <button class="pill" (click)="openPickMatch()">🎮 Elegir partido</button>
+      <button class="pill warn" (click)="logout()">🔒 Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="cp-container">
+  <section class="card head-card">
+    <div class="head-left">
+      <div class="teams-line">
+        <span class="team home">{{ homeName }}</span>
+        <span class="vs">vs</span>
+        <span class="team away">{{ awayName }}</span>
+      </div>
+      <div class="meta-line">
+        <span class="badge">{{ status() }}</span>
+        <span class="dot"></span>
+        <span class="period">{{ rt.quarter() }}</span>
+      </div>
+    </div>
+
+    <div class="head-right">
+      <div class="clock">{{ clock() }}</div>
+    </div>
+  </section>
+
+  <section class="card actions">
+    <button class="btn go" (click)="start()">Start</button>
+    <button class="btn stop" (click)="stop()">Stop</button>
+    <button class="btn" (click)="resume()">Resume</button>
+    <button class="btn ghost" (click)="reset()">Reset</button>
+    <button class="btn" (click)="timeout(60)">Timeout</button>
+  </section>
+</div>
