@@ -1,13 +1,14 @@
 // src/config/database.js
 
 const mysql = require('mysql2/promise');
-const logger = require('./logger'); // Corregido para importar el logger correctamente
+const logger = require('./logger');
 
 const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.DB_HOST,      // Ahora definido en docker-compose
+  user: process.env.DB_USER,      // Ahora definido en docker-compose
+  password: process.env.DB_PASSWORD,  // Ahora definido en docker-compose
+  database: process.env.DB_NAME,  // Ahora definido en docker-compose
+  ssl: false, 
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

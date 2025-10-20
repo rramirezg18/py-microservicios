@@ -1,23 +1,22 @@
-# =========================
-# 1) Build & Publish
-# =========================
+# Usa el SDK de .NET para poder construir la aplicación
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
 WORKDIR /src
 
-# Copia todo el proyecto
+# Copiar el archivo .csproj primero para optimizar la capa de caché de Docker
+COPY ["AuthService.csproj", "./"]
+
+# Restaurar las dependencias
+RUN dotnet restore
+
+# Copiar el código fuente completo y construir la aplicación
 COPY . .
+RUN dotnet publish -c Release -o /app
 
-# ⚠️ Si tu .csproj tiene otro nombre, cámbialo aquí:
-RUN dotnet restore "./AuthService.csproj"
-RUN dotnet publish "./AuthService.csproj" -c Release -o /app/out /p:UseAppHost=false
+# Usa la imagen de runtime de .NET para ejecutar la aplicación
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 
-# =========================
-# 2) Runtime
-# =========================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-ENV ASPNETCORE_URLS=http://+:8080
-EXPOSE 8080
+COPY --from=build /app .
 
-COPY --from=build /app/out ./
 ENTRYPOINT ["dotnet", "AuthService.dll"]

@@ -2,6 +2,7 @@
 
 const express = require('express');
 require('dotenv').config();
+const cors = require('cors'); // Importación de CORS
 const { pool, connectWithRetry } = require('./config/database');
 const playerRoutes = require('./routes/playerRoutes');
 const { notFound, errorHandler } = require('./utils/apiResponse');
@@ -9,6 +10,18 @@ const logger = require('./config/logger');
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Configuración de CORS
+const corsOptions = {
+    // Orígenes permitidos. Incluimos http://localhost para tu frontend en el puerto 80.
+    origin: ['http://localhost', 'http://127.0.0.1'], 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+};
+
+// Aplicar el middleware CORS antes de las rutas
+app.use(cors(corsOptions)); 
 
 async function initializeDatabase() {
   try {

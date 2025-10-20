@@ -15,7 +15,7 @@ export class AuthenticationService {
 
   // Base del API desde environment
   private baseUrl = environment.apiBaseUrl;
-  private apiUrl = `${this.baseUrl}/api/auth`;
+  private apiUrl = `${this.baseUrl}/auth`;
 
   private storage(): Storage | null {
     if (!isPlatformBrowser(this.platformId)) return null;

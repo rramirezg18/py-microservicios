@@ -5,6 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Http; // SameSiteMode
+using Microsoft.Extensions.DependencyInjection; // Para CreateScope
+using Microsoft.Extensions.Logging; // Para ILogger
 
 using AuthService.Data;
 using AuthService.Repositories.Interfaces;
@@ -71,11 +73,11 @@ builder.Services
             ClockSkew = TimeSpan.Zero
         };
     })
-    // Cookie temporal del flujo externo
+
     .AddCookie("External", cookie =>
     {
-        cookie.Cookie.SameSite = SameSiteMode.Lax;                     // para callback top-level
-        cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; // en HTTP dev no fuerza Secure
+        cookie.Cookie.SameSite = SameSiteMode.Lax;                    
+        cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; 
         cookie.ExpireTimeSpan = TimeSpan.FromMinutes(10);
     })
     .AddGitHub(options =>
@@ -83,27 +85,27 @@ builder.Services
         options.ClientId = builder.Configuration["Authentication:GitHub:ClientId"]!;
         options.ClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"]!;
 
-        // ⚠️ El callback del PROVIDER (debe coincidir con GitHub OAuth App)
         options.CallbackPath = "/signin-github";
 
         options.SignInScheme = "External";
         options.Scope.Add("user:email");
         options.SaveTokens = true;
 
-        // Evita “Correlation failed” en dev http
+
         options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
 builder.Services.AddAuthorization();
 
-// CORS para tu frontend Angular (4200)
+// CORS para tu frontend Angular
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("frontend", p =>
         p.WithOrigins(
-            "http://localhost:4200",
-            "http://127.0.0.1:4200"
+            "http://localhost",           // Cambiar esto a http://localhost
+            "http://127.0.0.1",           // Cambiar esto a http://127.0.0.1
+            "http://proyecto"             // Agregar aquí la URL para proyecto
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
@@ -121,6 +123,28 @@ builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        // Obtener el contexto de la base de datos
+        var context = services.GetRequiredService<AppDbContext>();
+        
+        // Aplicar todas las migraciones pendientes
+        // Esto crea la DB 'authDb' y sus tablas si no existen
+        context.Database.Migrate(); 
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        // Esto registrará el error si la conexión o la migración fallan
+        logger.LogError(ex, "An error occurred while migrating the database.");
+    }
+}
+
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -145,4 +169,4 @@ app.MapControllers();
 
 app.Run();
 
-public partial class Program { } // para AddUserSecrets<Program>()
+public partial class Program { }

@@ -8,7 +8,7 @@ namespace AuthService.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // requiere token por defecto
+    //[Authorize] // requiere token por defecto
     public class MenuController : ControllerBase
     {
         private readonly IMenuService _service;
