@@ -5,8 +5,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AspNet.Security.OAuth.GitHub;
 using Microsoft.AspNetCore.Http; // SameSiteMode
-using Microsoft.Extensions.DependencyInjection; // Para CreateScope
-using Microsoft.Extensions.Logging; // Para ILogger
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using AuthService.Data;
 using AuthService.Repositories.Interfaces;
@@ -16,26 +16,32 @@ using AuthService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// (Opcional) Cargar user-secrets en Development
+// === CONFIGURACIÓN DE DESARROLLO ===
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Controllers + Swagger (con auth Bearer)
+// === SERVICIOS PRINCIPALES ===
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// === SWAGGER con autenticación JWT ===
 builder.Services.AddSwaggerGen(c =>
 {
     var jwtScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Bearer {token}",
+        Description = "Ingrese el token JWT como: Bearer {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+        Reference = new OpenApiReference
+        {
+            Type = ReferenceType.SecurityScheme,
+            Id = "Bearer"
+        }
     };
     c.AddSecurityDefinition("Bearer", jwtScheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -44,11 +50,11 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// DbContext
+// === BASE DE DATOS (SQL Server) ===
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// AUTH: JWT + Cookie externa + GitHub OAuth
+// === AUTENTICACIÓN JWT + OAuth (GitHub) ===
 builder.Services
     .AddAuthentication(options =>
     {
@@ -73,39 +79,36 @@ builder.Services
             ClockSkew = TimeSpan.Zero
         };
     })
-
     .AddCookie("External", cookie =>
     {
-        cookie.Cookie.SameSite = SameSiteMode.Lax;                    
-        cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest; 
+        cookie.Cookie.SameSite = SameSiteMode.Lax;
+        cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         cookie.ExpireTimeSpan = TimeSpan.FromMinutes(10);
     })
     .AddGitHub(options =>
     {
         options.ClientId = builder.Configuration["Authentication:GitHub:ClientId"]!;
         options.ClientSecret = builder.Configuration["Authentication:GitHub:ClientSecret"]!;
-
         options.CallbackPath = "/signin-github";
-
         options.SignInScheme = "External";
         options.Scope.Add("user:email");
         options.SaveTokens = true;
-
-
         options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
+// === AUTORIZACIÓN ===
 builder.Services.AddAuthorization();
 
-// CORS para tu frontend Angular
+// === CORS (Frontend Angular) ===
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("frontend", p =>
         p.WithOrigins(
-            "http://localhost",           // Cambiar esto a http://localhost
-            "http://127.0.0.1",           // Cambiar esto a http://127.0.0.1
-            "http://proyecto"             // Agregar aquí la URL para proyecto
+            "http://localhost:4200",
+            "http://127.0.0.1:4200",
+            "http://localhost",
+            "http://127.0.0.1"
         )
         .AllowAnyHeader()
         .AllowAnyMethod()
@@ -113,7 +116,7 @@ builder.Services.AddCors(opt =>
     );
 });
 
-// DI
+// === DEPENDENCY INJECTION ===
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
@@ -124,35 +127,30 @@ builder.Services.AddScoped<IMenuService, MenuService>();
 
 var app = builder.Build();
 
+// === MIGRACIÓN AUTOMÁTICA ===
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
-        // Obtener el contexto de la base de datos
         var context = services.GetRequiredService<AppDbContext>();
-        
-        // Aplicar todas las migraciones pendientes
-        // Esto crea la DB 'authDb' y sus tablas si no existen
-        context.Database.Migrate(); 
+        context.Database.Migrate();
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        // Esto registrará el error si la conexión o la migración fallan
-        logger.LogError(ex, "An error occurred while migrating the database.");
+        logger.LogError(ex, "Error al aplicar migraciones de la base de datos.");
     }
 }
 
-
-
+// === PIPELINE ===
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Mantén HTTP en dev para simplificar OAuth local
+// Mantén HTTP en desarrollo
 // app.UseHttpsRedirection();
 
 app.UseCookiePolicy(new CookiePolicyOptions
@@ -161,7 +159,6 @@ app.UseCookiePolicy(new CookiePolicyOptions
 });
 
 app.UseCors("frontend");
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -169,4 +166,5 @@ app.MapControllers();
 
 app.Run();
 
+// === Clase parcial para pruebas ===
 public partial class Program { }

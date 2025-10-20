@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "ng serve --proxy-config proxy.conf.json --open",
+    "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "serve:ssr:scoreboard": "node dist/scoreboard/server/server.mjs"
+    "serve:ssr:scoreboard": "node dist/scoreboard/server/server.mjs",
+    "clean": "rimraf node_modules dist package-lock.json"
   },
   "prettier": {
     "overrides": [
@@ -60,6 +61,7 @@
     "karma-coverage": "2.2.0",
     "karma-jasmine": "5.1.0",
     "karma-jasmine-html-reporter": "2.1.0",
+    "rimraf": "6.0.1",
     "typescript": "5.8.3"
   }
 }

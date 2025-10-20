@@ -2,7 +2,6 @@ version: "3.8"
 
 services:
   db:
-    # Contenedor de la base de datos SQL Server
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
       ACCEPT_EULA: "Y"
@@ -83,7 +82,6 @@ services:
       - "8082:8082"
     restart: unless-stopped
 
-  # === Players Service ===
   players-db:
     image: mysql:8.0
     environment:
@@ -92,7 +90,7 @@ services:
       MYSQL_USER: jonathan
       MYSQL_PASSWORD: Perrito123
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - players_data:/var/lib/mysql
     healthcheck:
@@ -108,8 +106,7 @@ services:
       players-db:
         condition: service_healthy
     environment:
-      # **ATENCIÓN: Se cambiaron las variables aquí**
-      DB_HOST: players-db  # El nombre del servicio de la DB en docker-compose
+      DB_HOST: players-db
       DB_USER: jonathan
       DB_PASSWORD: Perrito123
       DB_NAME: playersDb
