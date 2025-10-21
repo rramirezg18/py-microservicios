@@ -138,4 +138,22 @@ export class PlayersListComponent implements OnInit {
     this.auth.logout();
     this.router.navigate(['/login']);
   }
+
+  // --- KPIs (solo lectura; no afectan la lógica existente) ---
+get totalPlayersKpi(): number {
+  // total actual según filtros/paginación aplicados
+  return this.totalItems ?? 0;
+}
+
+get activePlayersKpi(): number {
+  // si no tienes un flag de "activo", usamos el total filtrado
+  return this.getFilteredSnapshot().length;
+}
+
+get avgAgeKpi(): number {
+  const rows = this.getFilteredSnapshot();
+  if (!rows.length) return 0;
+  const sum = rows.reduce((acc, p) => acc + (Number(p.age) || 0), 0);
+  return Math.round(sum / rows.length);
+}
 }

@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, HostListener, ViewChild, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthenticationService } from '@app/services/api/authentication.service';
-
+import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink,MatIconModule],
   templateUrl: './admin-dashboard.component.html',
   styleUrls: ['./admin-dashboard.component.scss']
 })
