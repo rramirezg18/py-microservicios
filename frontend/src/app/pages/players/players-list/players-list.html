@@ -40,7 +40,7 @@
           matInput
           [(ngModel)]="search"
           (keyup.enter)="applyFilter()"
-          placeholder="Nombre o número" />
+          placeholder="Nombre, posición o edad" />
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="w200">
@@ -62,16 +62,11 @@
     <!-- Tabla -->
     <div class="table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="dataSource" class="full-width-table">
+
         <!-- ID -->
         <ng-container matColumnDef="id">
           <th mat-header-cell *matHeaderCellDef>ID</th>
           <td mat-cell *matCellDef="let p">{{ p.id }}</td>
-        </ng-container>
-
-        <!-- Número -->
-        <ng-container matColumnDef="number">
-          <th mat-header-cell *matHeaderCellDef>Número</th>
-          <td mat-cell *matCellDef="let p">{{ p.number }}</td>
         </ng-container>
 
         <!-- Nombre -->
@@ -80,10 +75,22 @@
           <td mat-cell *matCellDef="let p">{{ p.name }}</td>
         </ng-container>
 
+        <!-- Edad -->
+        <ng-container matColumnDef="age">
+          <th mat-header-cell *matHeaderCellDef>Edad</th>
+          <td mat-cell *matCellDef="let p">{{ p.age }}</td>
+        </ng-container>
+
+        <!-- Posición -->
+        <ng-container matColumnDef="position">
+          <th mat-header-cell *matHeaderCellDef>Posición</th>
+          <td mat-cell *matCellDef="let p">{{ p.position || '-' }}</td>
+        </ng-container>
+
         <!-- Equipo -->
-        <ng-container matColumnDef="teamName">
-          <th mat-header-cell *matHeaderCellDef>Equipo</th>
-          <td mat-cell *matCellDef="let p">{{ p.teamName }}</td>
+        <ng-container matColumnDef="teamId">
+          <th mat-header-cell *matHeaderCellDef>ID Equipo</th>
+          <td mat-cell *matCellDef="let p">{{ p.teamId ?? '-' }}</td>
         </ng-container>
 
         <!-- Acciones -->
@@ -99,6 +106,7 @@
           </td>
         </ng-container>
 
+        <!-- Filas -->
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>

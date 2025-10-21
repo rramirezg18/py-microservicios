@@ -35,13 +35,19 @@ import { AuthenticationService } from '@app/services/api/authentication.service'
   styleUrls: ['./players-list.scss']
 })
 export class PlayersListComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'number', 'name', 'teamName', 'actions'];
+  // columnas del backend
+  displayedColumns: string[] = ['id', 'name', 'age', 'position', 'teamId', 'actions'];
+
+  // datasets
+  private allPlayers: Player[] = [];
   dataSource: Player[] = [];
 
+  // paginación
   totalItems = 0;
   page = 1;
   pageSize = 10;
 
+  // filtros
   teamId: number | null = null;
   search = '';
 
@@ -54,39 +60,78 @@ export class PlayersListComponent implements OnInit {
   }
 
   loadPlayers(): void {
-    this.playerService.getPlayers(this.page, this.pageSize).subscribe(res => {
-      let players = res.items ?? [];
+    this.playerService.getAll().subscribe({
+      next: (res) => {
+        // ✅ El backend devuelve { items, totalCount }
+        this.allPlayers = res.items ?? [];
+        this.totalItems = res.totalCount ?? this.allPlayers.length;
 
-      if (this.teamId) {
-        players = players.filter(p => p.teamId === this.teamId);
-      }
-      if (this.search?.trim()) {
-        const q = this.search.toLowerCase();
-        players = players.filter(p =>
-          (p.name ?? '').toLowerCase().includes(q) ||
-          String(p.number ?? '').includes(q)
-        );
-      }
-
-      this.dataSource = players;
-      this.totalItems = res.totalCount ?? players.length;
+        this.applyFilter();
+      },
+      error: (err) => console.error('Error cargando jugadores:', err)
     });
   }
 
   applyFilter(): void {
+    let rows = [...this.allPlayers];
+
+    if (this.teamId != null) {
+      rows = rows.filter(p => p.teamId === this.teamId);
+    }
+
+    if (this.search?.trim()) {
+      const q = this.search.toLowerCase();
+      rows = rows.filter(p =>
+        (p.name ?? '').toLowerCase().includes(q) ||
+        String(p.age ?? '').includes(q) ||
+        (p.position ?? '').toLowerCase().includes(q) ||
+        String(p.teamId ?? '').includes(q)
+      );
+    }
+
+    this.totalItems = rows.length;
     this.page = 1;
-    this.loadPlayers();
+    this.applyPage(rows);
   }
 
   onPageChange(e: PageEvent): void {
     this.page = e.pageIndex + 1;
     this.pageSize = e.pageSize;
-    this.loadPlayers();
+    this.applyPage(this.getFilteredSnapshot());
+  }
+
+  private getFilteredSnapshot(): Player[] {
+    let rows = [...this.allPlayers];
+
+    if (this.teamId != null) {
+      rows = rows.filter(p => p.teamId === this.teamId);
+    }
+
+    if (this.search?.trim()) {
+      const q = this.search.toLowerCase();
+      rows = rows.filter(p =>
+        (p.name ?? '').toLowerCase().includes(q) ||
+        String(p.age ?? '').includes(q) ||
+        (p.position ?? '').toLowerCase().includes(q) ||
+        String(p.teamId ?? '').includes(q)
+      );
+    }
+
+    return rows;
+  }
+
+  private applyPage(rows: Player[]): void {
+    const start = (this.page - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    this.dataSource = rows.slice(start, end);
   }
 
   deletePlayer(id: number): void {
     if (!confirm('¿Eliminar jugador?')) return;
-    this.playerService.delete(id).subscribe(() => this.loadPlayers());
+    this.playerService.delete(id).subscribe({
+      next: () => this.loadPlayers(),
+      error: (err) => console.error('Error eliminando jugador:', err)
+    });
   }
 
   logout(): void {

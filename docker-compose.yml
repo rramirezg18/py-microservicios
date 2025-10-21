@@ -90,7 +90,7 @@ services:
       MYSQL_USER: jonathan
       MYSQL_PASSWORD: Perrito123
     ports:
-      - "3307:3306"
+      - "3300:3306"
     volumes:
       - players_data:/var/lib/mysql
     healthcheck:
@@ -111,7 +111,7 @@ services:
       DB_PASSWORD: Perrito123
       DB_NAME: playersDb
     ports:
-      - "3001:3000"
+      - "3000:3000"
     restart: unless-stopped
 
 volumes:

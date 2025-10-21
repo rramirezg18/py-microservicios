@@ -14,6 +14,14 @@ import { TeamService } from '../../../services/api/team.service';
 import { Team } from '../../../models/team';
 import { AuthenticationService } from '@app/services/api/authentication.service';
 
+interface PageResponse<T> {
+  content: T[];
+  totalElements: number;
+  number?: number;         // página actual (0-based)
+  size?: number;           // tamaño de página
+  totalPages?: number;
+}
+
 @Component({
   selector: 'app-teams-list',
   standalone: true,
@@ -33,15 +41,18 @@ import { AuthenticationService } from '@app/services/api/authentication.service'
   styleUrls: ['./teams-list.scss']
 })
 export class TeamsListComponent implements OnInit {
-  displayedColumns: string[] = ['id', 'name', 'color', 'playersCount', 'actions'];
+  displayedColumns: string[] = ['id', 'name', 'coach', 'city', 'actions'];
   dataSource: Team[] = [];
 
   search = '';
 
-  // Paginación
+  // Paginación (UI usa 1-based, Spring es 0-based; el service se encarga)
   page = 1;
   pageSize = 10;
   totalItems = 0;
+
+  loading = false;
+  errorMsg = '';
 
   constructor(
     private teamService: TeamService,
@@ -54,10 +65,34 @@ export class TeamsListComponent implements OnInit {
   }
 
   loadTeams() {
+    this.loading = true;
+    this.errorMsg = '';
+
     this.teamService.getTeams(this.page, this.pageSize, this.search)
-      .subscribe(res => {
-        this.dataSource = res.items;
-        this.totalItems = res.totalCount;
+      .subscribe({
+        next: (res: any) => {
+          // Soporta:
+          // - { content, totalElements } (Spring Page)
+          // - { items, totalCount } (API antigua)
+          // - Team[] simple
+          if (Array.isArray(res)) {
+            this.dataSource = res as Team[];
+            this.totalItems = this.dataSource.length;
+          } else {
+            const pageRes = (res as PageResponse<Team>);
+            this.dataSource = (pageRes.content ?? (res.items as Team[])) ?? [];
+            this.totalItems = (pageRes.totalElements ?? (res.totalCount as number)) ?? this.dataSource.length;
+
+            // Si el backend devuelve number/size, sincroniza UI
+            if (typeof pageRes.number === 'number') this.page = pageRes.number + 1;
+            if (typeof pageRes.size === 'number') this.pageSize = pageRes.size;
+          }
+        },
+        error: (err) => {
+          console.error('Error cargando equipos', err);
+          this.errorMsg = 'No se pudo cargar la lista de equipos.';
+        },
+        complete: () => { this.loading = false; }
       });
   }
 
@@ -67,21 +102,24 @@ export class TeamsListComponent implements OnInit {
   }
 
   onPageChange(event: PageEvent) {
-    this.page = event.pageIndex + 1;
+    this.page = event.pageIndex + 1; // MatPaginator es 0-based
     this.pageSize = event.pageSize;
     this.loadTeams();
   }
 
   deleteTeam(id: number) {
     if (!confirm('¿Eliminar equipo?')) return;
-    this.teamService.delete(id).subscribe(() => this.loadTeams());
+    this.teamService.delete(id).subscribe({
+      next: () => this.loadTeams(),
+      error: (err) => console.error('Error eliminando equipo', err)
+    });
   }
 
-  // Header actions
-
   logout() {
-  // Ajusta si tu servicio devuelve un Observable/Promise
-  (this as any).auth?.logout?.();
-  (this as any).router?.navigate?.(['/login']);
-}
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+
+  // Opcional: trackBy para performance
+  trackById = (_: number, item: Team) => item.id;
 }

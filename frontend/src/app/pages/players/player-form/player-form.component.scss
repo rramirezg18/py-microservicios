@@ -1,20 +1,27 @@
-/* Paleta */
+/* 🎨 Paleta base */
 :root {
   --header-grad-start: #0c0b53;
-  --header-grad-end:   #1b073f;
+  --header-grad-end: #1b073f;
   --accent: #9b57ff;
   --text-on-dark: #eef2ff;
   --card-bg: #f5f7ff;
+  --border-light: rgba(255, 255, 255, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.22);
 }
 
-:host { display: block; }
+:host {
+  display: block;
+  font-family: "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
 
-/* ===== HEADER con degradado ===== */
+/* ===== 🟣 HEADER con degradado ===== */
 .page-header {
   background: linear-gradient(90deg, var(--header-grad-start), var(--header-grad-end));
   color: var(--text-on-dark);
-  box-shadow: 0 10px 22px rgba(0,0,0,.22);
-  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 10px 22px var(--shadow-color);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .header-inner {
@@ -30,11 +37,11 @@
 .title {
   margin: 0;
   font-weight: 800;
-  letter-spacing: .2px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.4);
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
 }
 
-/* Botones del header */
+/* ===== 🔘 Botones del header ===== */
 .actions {
   display: flex;
   align-items: center;
@@ -45,19 +52,46 @@
     padding: 6px 14px;
     height: 36px;
     line-height: 24px;
-    border: 1px solid rgba(255,255,255,.25);
+    border: 1px solid var(--border-light);
     color: var(--text-on-dark);
     backdrop-filter: blur(4px);
-    mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: 6px; }
+    transition: 0.2s ease-in-out;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 6px;
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+      background-color: rgba(255, 255, 255, 0.1);
+    }
   }
 
-  .is-active { border-color: rgba(255,255,255,.45); }
-  .primary   { background: var(--accent); color: #fff; border-color: transparent; }
-  .logout    { background: #8b5cf6; color: #fff; border-color: transparent; }
-  .link      { color: #e5e7eb; }
+  .is-active {
+    border-color: rgba(255, 255, 255, 0.45);
+  }
+
+  .primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .logout {
+    background: #8b5cf6;
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .link {
+    color: #e5e7eb;
+  }
 }
 
-/* ===== CONTENIDO ===== */
+/* ===== 📄 CONTENIDO ===== */
 .page-container {
   max-width: 1100px;
   margin: 18px auto;
@@ -67,42 +101,60 @@
 .surface {
   background: var(--card-bg);
   border-radius: 16px;
-  padding: 18px;
+  padding: 24px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
 }
 
-/* Form grid */
+/* ===== 🧾 Form grid ===== */
 .form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 14px;
+  gap: 16px;
 }
 
-.full { width: 100%; }
+.full {
+  width: 100%;
+}
 
+/* ===== 🎯 Acciones ===== */
 .actions-row {
   display: flex;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
 
   .pill {
     border-radius: 999px;
     padding: 8px 16px;
-    mat-icon { margin-right: 6px; }
+
+    mat-icon {
+      margin-right: 6px;
+    }
   }
-  .primary { background: var(--accent); color: #fff; }
+
+  .primary {
+    background: var(--accent);
+    color: #fff;
+  }
 }
 
-/* Mesa/desktop */
+/* ===== 💻 Mesa/desktop ===== */
 @media (min-width: 720px) {
   .form-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  /* Hacer que Equipo y Acciones abarquen ancho completo */
-  mat-form-field.full:nth-of-type(3) { grid-column: 1 / -1; }
-  .actions-row { grid-column: 1 / -1; }
+
+  /* Equipo y Acciones en ancho completo */
+  mat-form-field.full:nth-of-type(3) {
+    grid-column: 1 / -1;
+  }
+
+  .actions-row {
+    grid-column: 1 / -1;
+  }
 }
 
-/* (por si alguna regla global pisa el gradiente) */
+/* ===== 🔒 Asegurar gradiente por encima de estilos globales ===== */
 :host header.page-header {
   background: linear-gradient(90deg, #0c0b53, #1b073f) !important;
   color: #eef2ff !important;

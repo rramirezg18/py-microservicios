@@ -1,17 +1,10 @@
 /**
- * Representa un equipo dentro de un torneo.
- * Consumido desde el microservicio teams-service (Spring Boot + PostgreSQL)
+ * Modelo alineado con el microservicio Teams (Spring Boot)
  */
 export interface Team {
-  /** Identificador único del equipo */
-  id: number;
-
-  /** Nombre del equipo */
+  id: number;       // Long en backend → number en TS
   name: string;
-
-  /** Color representativo (hexadecimal) */
-  color?: string;
-
-  /** Cantidad total de jugadores asociados */
-  playersCount?: number;
+  coach?: string;
+  city?: string;
 }
+

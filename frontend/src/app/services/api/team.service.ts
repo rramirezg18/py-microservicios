@@ -8,8 +8,8 @@ import { Team } from '../../models/team';
   providedIn: 'root'
 })
 export class TeamService {
-  //private apiUrl = 'http://localhost:5003/api/teams';
-  private apiUrl = '/api/teams';
+  // ✅ ahora apunta al endpoint correcto del backend
+  private apiUrl = 'http://localhost:8082/api/teams';
 
   constructor(private http: HttpClient) {}
 
@@ -17,35 +17,26 @@ export class TeamService {
     page: number = 1,
     pageSize: number = 10,
     search: string = ''
-  ): Observable<{ items: Team[]; totalCount: number }> {
-    let params = `?page=${page}&pageSize=${pageSize}`;
-    if (search) {
-      params += `&q=${encodeURIComponent(search)}`;
-    }
-    return this.http.get<{ items: Team[]; totalCount: number }>(
-      `${this.apiUrl}${params}`
-    );
+  ): Observable<{ content: Team[]; totalElements: number }> {
+    const params = `?page=${page - 1}&size=${pageSize}&search=${encodeURIComponent(search)}`;
+    return this.http.get<{ content: Team[]; totalElements: number }>(`${this.apiUrl}${params}`);
   }
 
-
   getAll(): Observable<Team[]> {
-
-    return this.getTeams(1, 1000, '').pipe(map(r => r.items));
+    return this.getTeams(1, 1000, '').pipe(map(r => r.content));
   }
 
   getById(id: number): Observable<Team> {
     return this.http.get<Team>(`${this.apiUrl}/${id}`);
   }
 
-
   create(team: Team): Observable<Team> {
     return this.http.post<Team>(this.apiUrl, team);
   }
 
-  update(id: number, team: Team): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}`, team);
+  update(id: number, team: Team): Observable<Team> {
+    return this.http.put<Team>(`${this.apiUrl}/${id}`, team);
   }
-
 
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);

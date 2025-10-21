@@ -33,7 +33,7 @@
   <mat-card class="panel mat-elevation-z4">
     <form (ngSubmit)="save()" #teamForm="ngForm" class="form-grid">
 
-      <!-- Nombre -->
+      <!-- Nombre (requerido) -->
       <mat-form-field class="full" appearance="outline">
         <mat-label>Nombre</mat-label>
         <input
@@ -45,25 +45,32 @@
         <mat-hint>Nombre visible del equipo</mat-hint>
       </mat-form-field>
 
-      <!-- Color -->
-      <mat-form-field class="full" appearance="outline">
-        <mat-label>Color</mat-label>
+      <!-- Entrenador -->
+      <mat-form-field appearance="outline">
+        <mat-label>Entrenador</mat-label>
         <input
           matInput
-          [(ngModel)]="team.color"
-          name="color"
-          placeholder="Ej. #0d9488 o red" />
-        <button matSuffix mat-icon-button disabled class="color-preview" [ngStyle]="{'--dot': team.color || '#ccc'}">
-          <span class="dot"></span>
-        </button>
-        <mat-hint>Hex (#RRGGBB) o nombre CSS</mat-hint>
+          [(ngModel)]="team.coach"
+          name="coach"
+          placeholder="Ej. Michael López" />
+        <mat-hint>Nombre del entrenador principal</mat-hint>
+      </mat-form-field>
+
+      <!-- Ciudad -->
+      <mat-form-field appearance="outline">
+        <mat-label>Ciudad</mat-label>
+        <input
+          matInput
+          [(ngModel)]="team.city"
+          name="city"
+          placeholder="Ej. Guatemala" />
       </mat-form-field>
 
       <!-- Acciones -->
       <div class="actions">
         <button mat-flat-button color="primary" class="pill pill-primary" type="submit" [disabled]="teamForm.invalid">
           <mat-icon>check</mat-icon>
-          Guardar
+          {{ isEdit ? 'Actualizar' : 'Guardar' }}
         </button>
 
         <a mat-stroked-button class="pill pill-ghost" routerLink="/teams">
