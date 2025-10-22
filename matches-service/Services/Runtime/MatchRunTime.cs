@@ -1,123 +1,119 @@
 using System.Collections.Concurrent;
 
-namespace MatchesService.Services.Runtime;
-
-/// <summary>
-/// Implementación en memoria del temporizador de cada partido.
-/// Controla inicio, pausa, reanudación y reinicio.
-/// </summary>
-internal class MatchRunTime : IMatchRunTime
+namespace MatchesService.Services.Runtime
 {
-    private class State
+    internal class MatchRunTime : IMatchRunTime
     {
-        public bool Running;
-        public int Remaining;          // segundos restantes
-        public DateTime? EndsAt;       // hora de finalización
-        public int DefaultSeconds;     // duración estándar
-        public readonly object Gate = new();
-    }
-
-    private readonly ConcurrentDictionary<int, State> _states = new();
-
-    public TimerSnapshot GetOrCreate(int matchId, int defaultSeconds)
-    {
-        var s = _states.GetOrAdd(matchId, _ => new State
+        private class State
         {
-            Running = false,
-            Remaining = 0,
-            EndsAt = null,
-            DefaultSeconds = defaultSeconds
-        });
-
-        lock (s.Gate)
-        {
-            UpdateRemainingIfRunning(s);
-            return new TimerSnapshot(s.Running, s.Remaining, s.EndsAt);
+            public bool Running;
+            public int Remaining;
+            public DateTime? EndsAt;
+            public int DefaultSeconds;
+            public readonly object Gate = new();
         }
-    }
 
-    public TimerSnapshot Get(int matchId)
-    {
-        if (!_states.TryGetValue(matchId, out var s))
-            return new TimerSnapshot(false, 0, null);
+        private readonly ConcurrentDictionary<int, State> _states = new();
 
-        lock (s.Gate)
+        public TimerSnapshot GetOrCreate(int matchId, int defaultSeconds)
         {
-            UpdateRemainingIfRunning(s);
-            return new TimerSnapshot(s.Running, s.Remaining, s.EndsAt);
-        }
-    }
-
-    public void Start(int matchId, int seconds)
-    {
-        var s = _states.GetOrAdd(matchId, _ => new State());
-        lock (s.Gate)
-        {
-            s.DefaultSeconds = seconds;
-            s.Running = true;
-            s.Remaining = seconds;
-            s.EndsAt = DateTime.Now.AddSeconds(seconds);
-        }
-    }
-
-    public int Pause(int matchId)
-    {
-        var s = _states.GetOrAdd(matchId, _ => new State());
-        lock (s.Gate)
-        {
-            if (s.Running && s.EndsAt is not null)
+            var s = _states.GetOrAdd(matchId, _ => new State
             {
-                var now = DateTime.Now;
-                var rem = (int)Math.Ceiling((s.EndsAt.Value - now).TotalSeconds);
-                s.Remaining = Math.Max(0, rem);
+                Running = false,
+                Remaining = 0,
+                EndsAt = null,
+                DefaultSeconds = defaultSeconds
+            });
+
+            lock (s.Gate)
+            {
+                UpdateRemainingIfRunning(s);
+                return new TimerSnapshot(s.Running, s.Remaining, s.EndsAt);
             }
-
-            s.Running = false;
-            s.EndsAt = null;
-            return s.Remaining;
         }
-    }
 
-    public void Resume(int matchId)
-    {
-        var s = _states.GetOrAdd(matchId, _ => new State());
-        lock (s.Gate)
+        public TimerSnapshot Get(int matchId)
         {
-            if (s.Remaining <= 0) return;
-            s.Running = true;
-            s.EndsAt = DateTime.Now.AddSeconds(s.Remaining);
+            if (!_states.TryGetValue(matchId, out var s))
+                return new TimerSnapshot(false, 0, null);
+
+            lock (s.Gate)
+            {
+                UpdateRemainingIfRunning(s);
+                return new TimerSnapshot(s.Running, s.Remaining, s.EndsAt);
+            }
         }
-    }
 
-    public void Reset(int matchId)
-    {
-        var s = _states.GetOrAdd(matchId, _ => new State());
-        lock (s.Gate)
+        public void Start(int matchId, int seconds)
         {
-            s.Running = false;
-            s.Remaining = 0;
-            s.EndsAt = null;
+            var s = _states.GetOrAdd(matchId, _ => new State());
+            lock (s.Gate)
+            {
+                s.DefaultSeconds = seconds;
+                s.Running = true;
+                s.Remaining = seconds;
+                s.EndsAt = DateTime.UtcNow.AddSeconds(seconds);
+            }
         }
-    }
 
-    public void Stop(int matchId) => Reset(matchId);
-
-    // === Helper interno ===
-    private static void UpdateRemainingIfRunning(State s)
-    {
-        if (s.Running && s.EndsAt is not null)
+        public int Pause(int matchId)
         {
-            var now = DateTime.Now;
-            var rem = (int)Math.Ceiling((s.EndsAt.Value - now).TotalSeconds);
-            if (rem <= 0)
+            var s = _states.GetOrAdd(matchId, _ => new State());
+            lock (s.Gate)
+            {
+                if (s.Running && s.EndsAt is not null)
+                {
+                    var now = DateTime.UtcNow;
+                    var rem = (int)Math.Ceiling((s.EndsAt.Value - now).TotalSeconds);
+                    s.Remaining = Math.Max(0, rem);
+                }
+
+                s.Running = false;
+                s.EndsAt = null;
+                return s.Remaining;
+            }
+        }
+
+        public void Resume(int matchId)
+        {
+            var s = _states.GetOrAdd(matchId, _ => new State());
+            lock (s.Gate)
+            {
+                if (s.Remaining <= 0) return;
+                s.Running = true;
+                s.EndsAt = DateTime.UtcNow.AddSeconds(s.Remaining);
+            }
+        }
+
+        public void Reset(int matchId)
+        {
+            var s = _states.GetOrAdd(matchId, _ => new State());
+            lock (s.Gate)
             {
                 s.Running = false;
                 s.Remaining = 0;
                 s.EndsAt = null;
             }
-            else
+        }
+
+        public void Stop(int matchId) => Reset(matchId);
+
+        private static void UpdateRemainingIfRunning(State s)
+        {
+            if (s.Running && s.EndsAt is not null)
             {
-                s.Remaining = rem;
+                var now = DateTime.UtcNow;
+                var rem = (int)Math.Ceiling((s.EndsAt.Value - now).TotalSeconds);
+                if (rem <= 0)
+                {
+                    s.Running = false;
+                    s.Remaining = 0;
+                    s.EndsAt = null;
+                }
+                else
+                {
+                    s.Remaining = rem;
+                }
             }
         }
     }

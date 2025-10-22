@@ -1,8 +1,8 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MatchesService.Models
 {
-    /// <summary>
-    /// Representa un evento de anotación o ajuste de puntos dentro de un partido.
-    /// </summary>
+    /// <summary>Evento de anotación o ajuste de puntos.</summary>
     public class ScoreEvent
     {
         public long Id { get; set; }
@@ -10,26 +10,19 @@ namespace MatchesService.Models
         public int MatchId { get; set; }
         public Match Match { get; set; } = null!;
 
-        // 🔹 Solo se almacena el ID del equipo, no la entidad Team
+        [Range(1, int.MaxValue)]
         public int TeamId { get; set; }
 
-        // 👇 El jugador es opcional (viene del players-service por API)
         public int? PlayerId { get; set; }
 
-        /// <summary>
-        /// Puntos agregados o ajustados (1, 2, 3 o negativos para corrección).
-        /// </summary>
+        /// <summary>Puntos (+/-) para correcciones.</summary>
+        [Range(-3, 3)]
         public int Points { get; set; }
 
-        /// <summary>
-        /// Nota opcional o descripción del evento (por ejemplo: “Triple de esquina”)
-        /// </summary>
+        [MaxLength(200)]
         public string? Note { get; set; }
 
-        /// <summary>
-        /// Fecha y hora en que se registró el evento.
-        /// </summary>
+        /// <summary>Fecha y hora de registro (UTC).</summary>
         public DateTime DateRegister { get; set; } = DateTime.UtcNow;
     }
 }
-

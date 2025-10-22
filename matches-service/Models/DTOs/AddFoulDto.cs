@@ -1,10 +1,10 @@
-namespace MatchesService.Models.DTOs;
+using System.ComponentModel.DataAnnotations;
 
-/// <summary>
-/// DTO used to register a new foul in a match.
-/// </summary>
-public record AddFoulDto(
-    int TeamId,         // Team committing the foul
-    int? PlayerId,      // Player committing the foul (optional)
-    string? Type        // Type of foul (optional: personal, technical, etc.)
-);
+namespace MatchesService.Models.DTOs
+{
+    public record AddFoulDto(
+        [property: Range(1, int.MaxValue)] int TeamId,
+        int? PlayerId,
+        [property: MaxLength(50)] string? Type
+    );
+}

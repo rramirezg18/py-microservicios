@@ -1,8 +1,8 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MatchesService.Models
 {
-    /// <summary>
-    /// Representa una falta cometida por un equipo o jugador en un partido.
-    /// </summary>
+    /// <summary>Representa una falta cometida por un equipo o jugador en un partido.</summary>
     public class Foul
     {
         public long Id { get; set; }
@@ -10,20 +10,16 @@ namespace MatchesService.Models
         public int MatchId { get; set; }
         public Match Match { get; set; } = null!;
 
-        // 🔹 Ya no usamos la entidad Team, solo guardamos el ID del equipo
+        [Range(1, int.MaxValue)]
         public int TeamId { get; set; }
 
-        // 👇 El jugador se referencia solo por ID (viene del players-service)
         public int? PlayerId { get; set; }
 
-        /// <summary>
-        /// Tipo de falta: Personal, Técnica, Antideportiva, etc.
-        /// </summary>
+        /// <summary>Tipo de falta: Personal, Técnica, etc.</summary>
+        [MaxLength(50)]
         public string? Type { get; set; }
 
-        /// <summary>
-        /// Fecha y hora en que se registró la falta.
-        /// </summary>
+        /// <summary>Fecha y hora de registro (UTC).</summary>
         public DateTime DateRegister { get; set; } = DateTime.UtcNow;
     }
 }

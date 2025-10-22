@@ -5,30 +5,17 @@ using MatchesService.Models;
 namespace MatchesService.Repositories
 {
     /// <summary>
-    /// Repositorio que implementa las operaciones de acceso a datos para la entidad Match.
-    /// Esta versión no depende del modelo Team local, ya que los equipos se gestionan desde el microservicio teams-service.
+    /// Implementación de acceso a datos con EF Core.
     /// </summary>
     public class MatchRepository : IMatchRepository
     {
         private readonly MatchesDbContext _context;
+        public MatchRepository(MatchesDbContext context) => _context = context;
 
-        public MatchRepository(MatchesDbContext context)
+        // ================= LISTADOS =================
+        public async Task<IEnumerable<Match>> GetAllAsync(int page, int pageSize, string? status, int? teamId, DateTime? from, DateTime? to)
         {
-            _context = context;
-        }
-
-        // ==========================================================
-        // 📋 LISTAR PARTIDOS (con filtros y paginación)
-        // ==========================================================
-        public async Task<IEnumerable<Match>> GetAllAsync(
-            int page,
-            int pageSize,
-            string? status,
-            int? teamId,
-            DateTime? from,
-            DateTime? to)
-        {
-            var query = _context.Matches.AsQueryable();
+            var query = _context.Matches.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(m => m.Status == status);
@@ -49,12 +36,9 @@ namespace MatchesService.Repositories
                 .ToListAsync();
         }
 
-        // ==========================================================
-        // 🔢 CONTAR PARTIDOS (para paginación)
-        // ==========================================================
         public async Task<int> CountAsync(string? status, int? teamId, DateTime? from, DateTime? to)
         {
-            var query = _context.Matches.AsQueryable();
+            var query = _context.Matches.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(m => m.Status == status);
@@ -71,81 +55,65 @@ namespace MatchesService.Repositories
             return await query.CountAsync();
         }
 
-        // ==========================================================
-        // 🔍 OBTENER UN PARTIDO POR ID
-        // ==========================================================
         public async Task<Match?> GetByIdAsync(int id)
         {
+            // tracked para modificaciones subsecuentes
             return await _context.Matches
                 .Include(m => m.ScoreEvents)
                 .Include(m => m.Fouls)
                 .FirstOrDefaultAsync(m => m.Id == id);
         }
 
-        // ==========================================================
-        // ➕ AGREGAR NUEVO PARTIDO
-        // ==========================================================
-        public async Task AddAsync(Match match)
-        {
-            await _context.Matches.AddAsync(match);
-        }
-
-        // ==========================================================
-        // 🔄 ACTUALIZAR PARTIDO
-        // ==========================================================
-        public async Task UpdateAsync(Match match)
-        {
-            _context.Matches.Update(match);
-            await Task.CompletedTask;
-        }
-
-        // ==========================================================
-        // ❌ ELIMINAR PARTIDO
-        // ==========================================================
-        public async Task DeleteAsync(Match match)
-        {
-            _context.Matches.Remove(match);
-            await Task.CompletedTask;
-        }
-
-        // ==========================================================
-        // 💾 GUARDAR CAMBIOS
-        // ==========================================================
-        public async Task SaveChangesAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
-
-        // ==========================================================
-        // ⏰ OBTENER PRÓXIMOS PARTIDOS
-        // ==========================================================
         public async Task<IEnumerable<Match>> GetUpcomingAsync()
         {
-            return await _context.Matches
-                .Where(m => m.Status == "Scheduled" && m.DateMatch > DateTime.UtcNow)
+            var nowUtc = DateTime.UtcNow;
+            return await _context.Matches.AsNoTracking()
+                .Where(m => m.Status == "Scheduled" && m.DateMatch > nowUtc)
                 .OrderBy(m => m.DateMatch)
                 .Take(10)
                 .ToListAsync();
         }
 
-        // ==========================================================
-        // 📅 PARTIDOS POR RANGO DE FECHAS
-        // ==========================================================
         public async Task<IEnumerable<Match>> GetByRangeAsync(DateTime from, DateTime to)
         {
-            return await _context.Matches
+            return await _context.Matches.AsNoTracking()
                 .Where(m => m.DateMatch >= from && m.DateMatch <= to)
                 .OrderBy(m => m.DateMatch)
                 .ToListAsync();
         }
 
-        // ==========================================================
-        // 🚨 CONTAR FALTAS POR EQUIPO EN UN PARTIDO
-        // ==========================================================
+        // ================= CRUD MATCH =================
+        public async Task AddAsync(Match match) => await _context.Matches.AddAsync(match);
+        public Task UpdateAsync(Match match) { _context.Matches.Update(match); return Task.CompletedTask; }
+        public Task DeleteAsync(Match match) { _context.Matches.Remove(match); return Task.CompletedTask; }
+        public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
+
+        // ================= SCORE EVENTS =================
+        public async Task AddScoreEventAsync(ScoreEvent ev) => await _context.ScoreEvents.AddAsync(ev);
+
+        // ================= FOULS =================
+        public async Task AddFoulAsync(Foul foul) => await _context.Fouls.AddAsync(foul);
+
         public async Task<int> GetFoulCountAsync(int matchId, int teamId)
         {
-            return await _context.Fouls
+            return await _context.Fouls.AsNoTracking()
                 .CountAsync(f => f.MatchId == matchId && f.TeamId == teamId);
+        }
+
+        public async Task<int> RemoveLastFoulsAsync(int matchId, int teamId, int count)
+        {
+            if (count <= 0) return 0;
+
+            var toDelete = await _context.Fouls
+                .Where(f => f.MatchId == matchId && f.TeamId == teamId)
+                .OrderByDescending(f => f.DateRegister)
+                .Take(count)
+                .ToListAsync();
+
+            if (toDelete.Count == 0) return 0;
+
+            _context.Fouls.RemoveRange(toDelete);
+            return toDelete.Count;
         }
     }
 }

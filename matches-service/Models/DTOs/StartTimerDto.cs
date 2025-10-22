@@ -1,8 +1,7 @@
-namespace MatchesService.Models.DTOs;
+using System.ComponentModel.DataAnnotations;
 
-/// <summary>
-/// DTO para iniciar el temporizador de un partido.
-/// </summary>
-public record StartTimerDto(
-    int Seconds   // Duración del cuarto o periodo en segundos
-);
+namespace MatchesService.Models.DTOs
+{
+    /// <summary>DTO para iniciar el temporizador de un partido.</summary>
+    public record StartTimerDto([property: Range(1, 7200)] int Seconds);
+}

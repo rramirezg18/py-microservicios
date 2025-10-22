@@ -10,19 +10,15 @@ var builder = WebApplication.CreateBuilder(args);
 // ==========================================================
 // 🔧 CONFIGURACIÓN DE SERVICIOS
 // ==========================================================
-
-// 1️⃣ Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 2️⃣ Controladores + JSON
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
         options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
     });
 
-// 3️⃣ CORS (permitir peticiones desde tu frontend Angular/React)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -31,52 +27,58 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// 4️⃣ DbContext (base de datos de Matches)
+// DbContext (SQL Server)
 builder.Services.AddDbContext<MatchesDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 5️⃣ Inyección de dependencias (Repository / Service / Runtime)
+// DI
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
 builder.Services.AddSingleton<IMatchRunTime, MatchRunTime>();
 
-// 6️⃣ SignalR (para comunicación en tiempo real)
+// SignalR
 builder.Services.AddSignalR();
 
-// 7️⃣ HttpClient para llamadas a otros microservicios (teams-service)
+// HttpClient externo
 builder.Services.AddHttpClient();
 
-// ==========================================================
-// 🚀 CONSTRUCCIÓN DE LA APLICACIÓN
-// ==========================================================
 var app = builder.Build();
 
-// 1️⃣ Middleware: Swagger
+// ==========================================================
+// 🗃️ APLICAR MIGRACIONES EN ARRANQUE
+// ==========================================================
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<MatchesDbContext>();
+    db.Database.Migrate(); // ⬅️ Aplica todas las migraciones pendientes
+}
+
+// ==========================================================
+// 🌐 MIDDLEWARES
+// ==========================================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// 2️⃣ Middleware: HTTPS + CORS
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
+// En docker suele bastar con HTTP
+// app.UseHttpsRedirection();
 
-// 3️⃣ Middleware: Autenticación / Autorización (si se usa JWT o Roles)
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
 // ==========================================================
 // 🔌 ENDPOINTS Y HUBS
 // ==========================================================
-
-// Controladores API REST
 app.MapControllers();
-
-// Hub de SignalR para actualizaciones en vivo
 app.MapHub<ScoreHub>("/hub/score");
 
+// Health (para curl rápido)
+app.MapGet("/health", () => Results.Ok("OK"));
+
 // ==========================================================
-// 🟢 INICIO DE LA APLICACIÓN
+// 🟢 RUN
 // ==========================================================
 app.Run();
