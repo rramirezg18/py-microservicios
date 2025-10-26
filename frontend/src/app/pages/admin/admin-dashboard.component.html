@@ -9,8 +9,7 @@
 
       <div #logoutWrap class="logout-wrap">
         <button class="hero-logout" (click)="toggleLogout($event)">
-          <mat-icon fontSet="material-icons-outlined">logout</mat-icon>
-          Logout
+          <mat-icon>logout</mat-icon> Logout
         </button>
         <div class="logout-menu" [class.open]="logoutOpen">
           <button class="menu-item" (click)="logout()">Cerrar sesión</button>
@@ -26,132 +25,103 @@
     <!-- KPIs -->
     <section class="kpis">
       <div class="kpi">
-        <div class="kpi-ico"><mat-icon fontSet="material-icons-outlined">stadium</mat-icon></div>
-        <div class="kpi-body"><span class="kpi-label">Torneos</span><span class="kpi-value">—</span></div>
+        <div class="kpi-ico"><mat-icon>stadium</mat-icon></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Torneos</span>
+          <span class="kpi-value">—</span>
+        </div>
       </div>
       <div class="kpi">
-        <div class="kpi-ico"><mat-icon fontSet="material-icons-outlined">today</mat-icon></div>
-        <div class="kpi-body"><span class="kpi-label">Partidos hoy</span><span class="kpi-value">—</span></div>
+        <div class="kpi-ico"><mat-icon>today</mat-icon></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Partidos hoy</span>
+          <span class="kpi-value">—</span>
+        </div>
       </div>
       <div class="kpi">
-        <div class="kpi-ico"><mat-icon fontSet="material-icons-outlined">groups</mat-icon></div>
-        <div class="kpi-body"><span class="kpi-label">Equipos</span><span class="kpi-value">—</span></div>
+        <div class="kpi-ico"><mat-icon>groups</mat-icon></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Equipos</span>
+          <span class="kpi-value">—</span>
+        </div>
       </div>
       <div class="kpi">
-        <div class="kpi-ico"><mat-icon fontSet="material-icons-outlined">person</mat-icon></div>
-        <div class="kpi-body"><span class="kpi-label">Jugadores</span><span class="kpi-value">—</span></div>
+        <div class="kpi-ico"><mat-icon>person</mat-icon></div>
+        <div class="kpi-body">
+          <span class="kpi-label">Jugadores</span>
+          <span class="kpi-value">—</span>
+        </div>
       </div>
     </section>
 
     <!-- Acciones rápidas -->
     <section class="quick-actions">
-      <a class="qa pill" routerLink="/tournaments">
-        <mat-icon fontSet="material-icons-outlined">add_circle</mat-icon>
-        Crear torneo
-      </a>
-      <a class="qa pill" [routerLink]="['/control', (matchId || 1)]">
-        <mat-icon fontSet="material-icons-outlined">sports</mat-icon>
-        Nuevo partido
-      </a>
-      <a class="qa pill" routerLink="/players/create">
-        <mat-icon fontSet="material-icons-outlined">person_add</mat-icon>
-        Nuevo jugador
-      </a>
-      <button type="button" class="qa pill" (click)="scheduleOpen = !scheduleOpen">
-        <mat-icon fontSet="material-icons-outlined">event</mat-icon>
-        Programar partido
-      </button>
-    </section>
-
-    <!-- Programar partido (inline) -->
-    <section class="panel schedule" *ngIf="scheduleOpen">
-      <header>Programar partido</header>
-
-      <form (submit)="schedule($event)">
-        <div class="schedule-grid">
-          <div class="field">
-            <label>Equipo local</label>
-            <select #homeSel (change)="homeTeamId = +homeSel.value" required>
-              <option value="" selected disabled>Selecciona</option>
-              <option *ngFor="let t of teams" [value]="t.id">{{ t.name }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>Equipo visitante</label>
-            <select #awaySel (change)="awayTeamId = +awaySel.value" required>
-              <option value="" selected disabled>Selecciona</option>
-              <option *ngFor="let t of teams" [value]="t.id">{{ t.name }}</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label>Fecha</label>
-            <input #dateInput type="date" (change)="date = dateInput.value" required>
-          </div>
-
-          <div class="field">
-            <label>Hora</label>
-            <input #timeInput type="time" (change)="time = timeInput.value" required>
-          </div>
-
-          <div class="field">
-            <label>Minutos por cuarto</label>
-            <input #minInput type="number" min="1" max="30" [value]="minutes" (change)="minutes = +minInput.value" required>
-          </div>
-        </div>
-
-        <div class="schedule-actions">
-          <button type="submit" class="btn-primary" [disabled]="isScheduling">
-            {{ isScheduling ? 'Guardando…' : 'Programar' }}
-          </button>
-          <button type="button" class="btn-ghost" (click)="scheduleOpen = false">Cancelar</button>
-        </div>
-        <p class="help">Se enviará fecha/hora local y UTC; tu API puede mapear cualquiera.</p>
-      </form>
+      <a class="qa pill" routerLink="/tournaments"><mat-icon>add_circle</mat-icon> Crear torneo</a>
+      <a class="qa pill" [routerLink]="['/control', (matchId || 1)]"><mat-icon>sports</mat-icon> Nuevo partido</a>
+      <a class="qa pill" routerLink="/players/create"><mat-icon>person_add</mat-icon> Nuevo jugador</a>
     </section>
 
     <!-- GRID PRINCIPAL -->
     <section class="dashboard-grid">
 
+      <!-- Tarjetas de navegación (tus cards, con estilo nuevo) -->
       <div class="cards">
         <a class="card" [routerLink]="['/score', (matchId || 1)]">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">query_stats</mat-icon></div>
-          <div class="meta"><h3 class="title">Scoreboard</h3><p class="desc">Ver marcador en vivo</p></div>
+          <div class="icon"><mat-icon>query_stats</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Scoreboard</h3>
+            <p class="desc">Ver marcador en vivo</p>
+          </div>
           <div class="chev">›</div>
         </a>
 
         <a class="card" [routerLink]="['/control', matchId]">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">tune</mat-icon></div>
-          <div class="meta"><h3 class="title">Control</h3><p class="desc">Panel del operador</p></div>
+          <div class="icon"><mat-icon>tune</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Control</h3>
+            <p class="desc">Panel del operador</p>
+          </div>
           <div class="chev">›</div>
         </a>
 
         <a class="card" routerLink="/players">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">group</mat-icon></div>
-          <div class="meta"><h3 class="title">Players</h3><p class="desc">Gestiona el plantel</p></div>
+          <div class="icon"><mat-icon>group</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Players</h3>
+            <p class="desc">Gestiona el plantel</p>
+          </div>
           <div class="chev">›</div>
         </a>
 
         <a class="card" routerLink="/teams">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">sports_basketball</mat-icon></div>
-          <div class="meta"><h3 class="title">Teams</h3><p class="desc">Crea y edita equipos</p></div>
+          <div class="icon"><mat-icon>sports_basketball</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Teams</h3>
+            <p class="desc">Crea y edita equipos</p>
+          </div>
           <div class="chev">›</div>
         </a>
 
         <a class="card" routerLink="/tournaments">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">emoji_events</mat-icon></div>
-          <div class="meta"><h3 class="title">Tournaments</h3><p class="desc">Programa y administra partidos</p></div>
+          <div class="icon"><mat-icon>emoji_events</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Tournaments</h3>
+            <p class="desc">Programa y administra partidos</p>
+          </div>
           <div class="chev">›</div>
         </a>
 
         <a class="card" routerLink="/reports">
-          <div class="icon"><mat-icon fontSet="material-icons-outlined">picture_as_pdf</mat-icon></div>
-          <div class="meta"><h3 class="title">Reports</h3><p class="desc">PDFs de equipos, jugadores y partidos</p></div>
+          <div class="icon"><mat-icon>picture_as_pdf</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Reports</h3>
+            <p class="desc">PDFs de equipos, jugadores y partidos</p>
+          </div>
           <div class="chev">›</div>
         </a>
       </div>
 
+      <!-- Agenda compacta -->
       <div class="panel agenda">
         <header>Agenda</header>
         <ul class="agenda-list">
@@ -161,6 +131,7 @@
         </ul>
       </div>
 
+      <!-- Gráfico placeholder (SVG, cero dependencias) -->
       <div class="panel chart">
         <header>Actividad</header>
         <svg viewBox="0 0 300 100" preserveAspectRatio="none" class="spark">
