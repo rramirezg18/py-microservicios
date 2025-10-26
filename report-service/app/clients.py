@@ -1,140 +1,157 @@
-# report-service/app/clients.py
+# app/clients.py
 from __future__ import annotations
 
-import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 import httpx
 
+from .config import (
+    TEAMS_API_BASE,
+    PLAYERS_API_BASE,
+    MATCHES_API_BASE,
+    TEAMS_API_TOKEN,
+    PLAYERS_API_TOKEN,
+    MATCHES_API_TOKEN,
+    choose_header,
+)
 
-BASE_API = os.getenv("BASE_API", "http://api:8080")
-UPSTREAM_TOKEN = os.getenv("UPSTREAM_TOKEN", "").strip()  
-
-
-def _bearer_header(api_bearer: str | None) -> dict[str, str]:
-    """
-    Construye headers para llamar a la API C#. Si llega un string "Bearer ...",
-    se usa tal cual. Si llega sólo el token, se le antepone "Bearer ".
-    Si no llega, usa UPSTREAM_TOKEN (si está definido).
-    """
-    if api_bearer:
-        return {"Authorization": api_bearer}
-    if UPSTREAM_TOKEN:
-        tok = UPSTREAM_TOKEN
-        if not tok.lower().startswith("bearer "):
-            tok = f"Bearer {tok}"
-        return {"Authorization": tok}
-    return {}
-
-
+# -------------------------
+# Utilidades de parseo
+# -------------------------
 def _as_list_items(data: Any) -> list[dict[str, Any]]:
-    """
-    La API puede responder {items:[...], totalCount} o directamente una lista.
-    Normaliza a lista de dicts.
-    """
-    if isinstance(data, dict):
-        items = data.get("items", data.get("data"))
-        if isinstance(items, list):
-            return items
-        return [data]
     if isinstance(data, list):
         return data
+    if isinstance(data, dict):
+        for k in ("items", "content", "results"):
+            v = data.get(k)
+            if isinstance(v, list):
+                return v
+        v = data.get("data")
+        if isinstance(v, list):
+            return v
+        if isinstance(v, dict):
+            for k in ("items", "content", "results"):
+                vv = v.get(k)
+                if isinstance(vv, list):
+                    return vv
+        return []
     return []
 
+async def fetch_teams(
+    x_api_auth: str | None = None, x_teams_auth: str | None = None
+) -> list[dict[str, Any]]:
+    url = f"{TEAMS_API_BASE}/api/teams"
+    headers = choose_header(x_teams_auth, x_api_auth, TEAMS_API_TOKEN)
 
-def _parse_iso(d: str | None) -> datetime | None:
-    if not d:
-        return None
-    try:
-        return datetime.fromisoformat(d.replace("Z", "+00:00"))
-    except Exception:
-        return None
+    # Intentamos varios esquemas de paginación conocidos
+    schemes = [
+        ("page", "size", 0),       # Spring Data por defecto (0-based)
+        ("page", "pageSize", 0),   # Tu front usa page/pageSize
+        ("pageNumber", "pageSize", 1),
+        ("skip", "take", 0),
+    ]
 
-
-
-async def fetch_teams(api_bearer: str | None) -> list[dict[str, Any]]:
-    url = f"{BASE_API}/api/teams"
     async with httpx.AsyncClient(timeout=30) as cx:
-        r = await cx.get(url, headers=_bearer_header(api_bearer))
+        for page_key, size_key, start in schemes:
+            page = start
+            page_size = 500
+            acc: list[dict[str, Any]] = []
+            while True:
+                params = {page_key: page, size_key: page_size}
+                r = await cx.get(url, headers=headers, params=params)
+                if r.status_code >= 400:
+                    break  # probamos el siguiente esquema
+                items = _as_list_items(r.json())
+                if not items:
+                    break
+                acc.extend(items)
+                # Si vinieron menos que el tamaño solicitado, no hay más páginas
+                if len(items) < page_size:
+                    return acc
+                page += 1
+
+        # Fallback final: sin paginación (por si tu endpoint soporta lista completa)
+        r = await cx.get(url, headers=headers)
         r.raise_for_status()
         return _as_list_items(r.json())
 
 
-async def fetch_teams_map(api_bearer: str | None) -> dict[str, str]:
-    """
-    Devuelve { "1": "Tigres", "2": "Leones", ... } a partir de /api/teams.
-    """
-    teams = await fetch_teams(api_bearer)
+async def fetch_team_by_id(
+    team_id: str, x_api_auth: Optional[str] = None, x_teams_auth: Optional[str] = None
+) -> dict[str, Any] | None:
+    url = f"{TEAMS_API_BASE}/api/teams/{team_id}"
+    headers = choose_header(x_teams_auth, x_api_auth, TEAMS_API_TOKEN)
+    async with httpx.AsyncClient(timeout=30) as cx:
+        r = await cx.get(url, headers=headers)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()
+
+async def fetch_teams_map(
+    x_api_auth: Optional[str] = None, x_teams_auth: Optional[str] = None
+) -> dict[str, str]:
+    teams = await fetch_teams(x_api_auth, x_teams_auth)
     mapping: dict[str, str] = {}
     for t in teams:
         tid = str(t.get("id") or t.get("Id") or "")
-        name = t.get("name") or t.get("Name") or tid
+        name = t.get("name") or t.get("Name") or t.get("teamName") or t.get("TeamName") or tid
         if tid:
             mapping[tid] = str(name)
     return mapping
 
-
-
-async def fetch_standings(api_bearer: str | None) -> list[dict[str, Any]]:
+# -------------------------
+# Players-service
+# -------------------------
+async def fetch_players(
+    team_id: Optional[str] = None,
+    x_api_auth: Optional[str] = None,
+    x_players_auth: Optional[str] = None,
+) -> list[dict[str, Any]]:
     """
-    GET /api/standings  ->  [{id, name, color, wins}, ...]
+    GET /api/players?teamId=...
+    Nuevo esquema: id, name, age, position, team_id, createdat, updatedat
     """
-    url = f"{BASE_API}/api/standings"
+    url = f"{PLAYERS_API_BASE}/api/players"
+    headers = choose_header(x_players_auth, x_api_auth, PLAYERS_API_TOKEN)
+    params: dict[str, Any] = {}
+    if team_id:
+        params["teamId"] = team_id
     async with httpx.AsyncClient(timeout=30) as cx:
-        r = await cx.get(url, headers=_bearer_header(api_bearer))
+        r = await cx.get(url, params=params, headers=headers)
         r.raise_for_status()
         return _as_list_items(r.json())
 
-
-
-async def fetch_players_by_team(
-    team_id: str, api_bearer: str | None
-) -> list[dict[str, Any]]:
-    url = f"{BASE_API}/api/players"
-    params = {"teamId": team_id}
+async def fetch_player_by_id(
+    player_id: str,
+    x_api_auth: Optional[str] = None,
+    x_players_auth: Optional[str] = None,
+) -> dict[str, Any] | None:
+    url = f"{PLAYERS_API_BASE}/api/players/{player_id}"
+    headers = choose_header(x_players_auth, x_api_auth, PLAYERS_API_TOKEN)
     async with httpx.AsyncClient(timeout=30) as cx:
-        r = await cx.get(url, params=params, headers=_bearer_header(api_bearer))
+        r = await cx.get(url, headers=headers)
+        if r.status_code == 404:
+            return None
         r.raise_for_status()
-        return _as_list_items(r.json())
+        return r.json()
 
-
-async def fetch_all_players(api_bearer: str | None) -> list[dict[str, Any]]:
-    """
-    Intenta GET /api/players (todos). Si la API no lo soporta, hace fallback por equipo.
-    """
-    url = f"{BASE_API}/api/players"
-    async with httpx.AsyncClient(timeout=60) as cx:
-        r = await cx.get(url, headers=_bearer_header(api_bearer))
-        if r.status_code == 200:
-            return _as_list_items(r.json())
-
-
-    teams = await fetch_teams(api_bearer)
-    all_players: list[dict[str, Any]] = []
-    async with httpx.AsyncClient(timeout=30) as cx:
-        for t in teams:
-            tid = t.get("id") or t.get("Id")
-            if tid is None:
-                continue
-            rr = await cx.get(
-                f"{BASE_API}/api/players",
-                params={"teamId": tid},
-                headers=_bearer_header(api_bearer),
-            )
-            if rr.status_code == 200:
-                all_players.extend(_as_list_items(rr.json()))
-    return all_players
-
-
-
-async def fetch_matches_history(
-    from_date: str | None,
-    to_date: str | None,
-    api_bearer: str | None,
+# -------------------------
+# Matches-service
+# -------------------------
+async def fetch_matches(
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    x_api_auth: Optional[str] = None,
+    x_matches_auth: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    url = f"{BASE_API}/api/matches"
-
+    """
+    GET /api/matches?from=...&to=...
+    Esquema: Id, HomeTeamId, AwayTeamId, HomeScore, AwayScore, Period, Status, DateMatch, QuarterDurationSeconds
+    """
+    url = f"{MATCHES_API_BASE}/api/matches"
+    headers = choose_header(x_matches_auth, x_api_auth, MATCHES_API_TOKEN)
     params: dict[str, Any] = {}
     if from_date:
         params["from"] = from_date
@@ -142,81 +159,35 @@ async def fetch_matches_history(
         params["to"] = to_date
 
     async with httpx.AsyncClient(timeout=30) as cx:
-        r = await cx.get(url, params=params, headers=_bearer_header(api_bearer))
+        r = await cx.get(url, params=params, headers=headers)
         r.raise_for_status()
-        data = _as_list_items(r.json())
+        items = _as_list_items(r.json())
 
-  
+    # Filtro defensivo por si el servicio aún no filtra
     if from_date or to_date:
         f_dt = _parse_iso(from_date)
         t_dt = _parse_iso(to_date)
-        filtered = []
-        for m in data:
-            raw = (
-                m.get("dateMatchUtc")
-                or m.get("dateMatch")
-                or m.get("DateMatch")
-                or m.get("date")
-            )
-            d = _parse_iso(str(raw))
+        filtered: list[dict[str, Any]] = []
+        for m in items:
+            d = _parse_iso(str(m.get("DateMatch") or m.get("dateMatch") or m.get("date")))
             if f_dt and (not d or d < f_dt):
                 continue
             if t_dt and (not d or d > t_dt):
                 continue
             filtered.append(m)
-        data = filtered
+        items = filtered
+    return items
 
-    return data
-
-
-async def fetch_all_matches(api_bearer: str | None) -> list[dict[str, Any]]:
-    return await fetch_matches_history(None, None, api_bearer)
-
-
-# ============================
-# MATCH ROSTER
-# ============================
-async def fetch_match_roster(match_id: str, api_bearer: str | None) -> dict[str, Any]:
-    """
-    Devuelve:
-      {
-        "match": {...},
-        "homePlayers": [...],
-        "awayPlayers": [...]
-      }
-    """
-    headers = _bearer_header(api_bearer)
+async def fetch_match_by_id(
+    match_id: str,
+    x_api_auth: Optional[str] = None,
+    x_matches_auth: Optional[str] = None,
+) -> dict[str, Any] | None:
+    url = f"{MATCHES_API_BASE}/api/matches/{match_id}"
+    headers = choose_header(x_matches_auth, x_api_auth, MATCHES_API_TOKEN)
     async with httpx.AsyncClient(timeout=30) as cx:
-        # Detalle del partido
-        m_url = f"{BASE_API}/api/matches/{match_id}"
-        mr = await cx.get(m_url, headers=headers)
-        mr.raise_for_status()
-        match = mr.json()
-
-        home_id = (
-            match.get("homeTeamId")
-            or match.get("HomeTeamId")
-            or (match.get("homeTeam") or {}).get("id")
-        )
-        away_id = (
-            match.get("awayTeamId")
-            or match.get("AwayTeamId")
-            or (match.get("awayTeam") or {}).get("id")
-        )
-
-        # Planteles
-        players_url = f"{BASE_API}/api/players"
-
-        phr = await cx.get(players_url, params={"teamId": home_id}, headers=headers)
-        phr.raise_for_status()
-        home_players = _as_list_items(phr.json())
-
-        par = await cx.get(players_url, params={"teamId": away_id}, headers=headers)
-        par.raise_for_status()
-        away_players = _as_list_items(par.json())
-
-    return {
-        "match": match,
-        "homePlayers": home_players,
-        "awayPlayers": away_players,
-    }
+        r = await cx.get(url, headers=headers)
+        if r.status_code == 404:
+            return None
+        r.raise_for_status()
+        return r.json()

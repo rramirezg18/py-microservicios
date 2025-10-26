@@ -117,16 +117,16 @@ def build_pdf_teams(teams: Iterable[dict[str, Any]]) -> bytes:
     doc = _doc(buf)
     title, _, normal = _styles()
 
-    rows: list[list[Any]] = [["ID", "Name", "Color", "Created"]]
+    rows: list[list[Any]] = [["ID", "Name", "City", "Coach"]]
     for t in teams:
         if not isinstance(t, dict):
             continue
         rows.append(
             [
-                _safe(t, "id", "Id", default=""),
-                _safe(t, "name", "Name", default=""),
-                _safe(t, "color", "Color", default=""),
-                _safe(t, "created", "Created", "createdAt", "CreatedAt", default=""),
+                _safe(t, "id", "Id", "teamId", "TeamId", default="-"),
+                _safe(t, "name", "Name", "teamName", "TeamName", default="-"),
+                _safe(t, "city", "City", "location", "Location", default="-"),
+                _safe(t, "coach", "Coach", "manager", "Manager", default="-"),
             ]
         )
 
@@ -135,93 +135,72 @@ def build_pdf_teams(teams: Iterable[dict[str, Any]]) -> bytes:
         Spacer(1, 6),
         Paragraph(f"Total: {len(rows)-1}", normal),
         Spacer(1, 8),
-        _table(rows),
+        _table(rows, col_widths=[50, 220, 150, 130]),
     ]
     doc.build(story)
     return buf.getvalue()
 
 
-def build_pdf_players_by_team(
-    team_id: str,
-    players: Iterable[dict[str, Any]],
-    team_name: str | None = None,
-) -> bytes:
+def build_pdf_players_by_team(team_id: str, players: Iterable[dict[str, Any]], team_name: str | None=None) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
     title, _, normal = _styles()
 
-    rows: list[list[Any]] = [["#", "Player", "Position", "Number"]]
+    rows: list[list[Any]] = [["#", "Player", "Age", "Position"]]
     for i, p in enumerate(players, 1):
         if not isinstance(p, dict):
             continue
-        rows.append(
-            [
-                i,
-                _safe(p, "name", "Name", default=""),
-                _safe(p, "position", "Position", default=""),
-                _safe(p, "number", "Number", "jersey", "Jersey", default=""),
-            ]
-        )
+        rows.append([
+            i,
+            _safe(p, "name", "Name", default=""),
+            _safe(p, "age", "Age", default="-"),
+            _safe(p, "position", "Position", default=""),
+        ])
 
-    titulo = (
-        f"Jugadores del Equipo {team_name}  (#{team_id})"
-        if team_name
-        else f"Jugadores del Equipo #{team_id}"
-    )
+    titulo = f"Jugadores del Equipo {team_name}  (#{team_id})" if team_name else f"Jugadores del Equipo #{team_id}"
 
     story: list[Any] = [
         Paragraph(titulo, title),
         Spacer(1, 6),
         Paragraph(f"Total: {len(rows)-1}", normal),
         Spacer(1, 8),
-        _table(rows),
+        _table(rows, col_widths=[28, 260, 70, 140]),
     ]
     doc.build(story)
     return buf.getvalue()
 
 
-def build_pdf_all_players(
-    players: Iterable[dict[str, Any]], team_name_by_id: dict[str, str]
-) -> bytes:
-    """
-    Tabla completa de jugadores: # | Player | Team | Position | Number
-    """
+def build_pdf_all_players(players: Iterable[dict[str, Any]], team_name_by_id: dict[str, str]) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
     title, _, normal = _styles()
 
-    rows: list[list[Any]] = [["#", "Player", "Team", "Position", "Number"]]
+    rows: list[list[Any]] = [["#", "Player", "Team", "Age", "Position"]]
     for i, p in enumerate(players, 1):
         if not isinstance(p, dict):
             continue
-        team_id = str(
-            _safe(p, "teamId", "TeamId", "team_id", "team", default="")
-        )
+        team_id = str(_safe(p, "team_id", "teamId", "TeamId", default=""))
         team_name = team_name_by_id.get(team_id, team_id or "-")
-        rows.append(
-            [
-                i,
-                _safe(p, "name", "Name", default=""),
-                team_name,
-                _safe(p, "position", "Position", default=""),
-                _safe(p, "number", "Number", "jersey", "Jersey", default=""),
-            ]
-        )
+        rows.append([
+            i,
+            _safe(p, "name", "Name", default=""),
+            team_name,
+            _safe(p, "age", "Age", default="-"),
+            _safe(p, "position", "Position", default=""),
+        ])
 
     story: list[Any] = [
         Paragraph("Jugadores Registrados", title),
         Spacer(1, 6),
         Paragraph(f"Total: {len(rows)-1}", normal),
         Spacer(1, 8),
-        _table(rows, col_widths=[28, 170, 170, 110, 70]),
+        _table(rows, col_widths=[28, 180, 170, 60, 130]),
     ]
     doc.build(story)
     return buf.getvalue()
 
 
-def build_pdf_matches_history(
-    matches: Iterable[dict[str, Any]], from_date: str | None, to_date: str | None
-) -> bytes:
+def build_pdf_matches_history(matches: Iterable[dict[str, Any]], from_date: str | None, to_date: str | None, team_name_by_id: dict[str,str] | None=None) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
     title, _, normal = _styles()
@@ -234,15 +213,15 @@ def build_pdf_matches_history(
     for m in matches:
         if not isinstance(m, dict):
             continue
-        home = _safe(m, "homeTeamName", "homeTeam", "HomeTeamName", default="")
-        away = _safe(m, "awayTeamName", "awayTeam", "AwayTeamName", default="")
-        hs = _safe(m, "homeScore", "HomeScore", default="")
-        as_ = _safe(m, "awayScore", "AwayScore", default="")
-        date_raw = _safe(
-            m, "dateMatchUtc", "date", "DateMatch", "DateMatchUtc", default=""
-        )
+        hid = str(_safe(m, "HomeTeamId", "homeTeamId", default=""))
+        aid = str(_safe(m, "AwayTeamId", "awayTeamId", default=""))
+        home = (team_name_by_id or {}).get(hid, hid)
+        away = (team_name_by_id or {}).get(aid, aid)
+        hs = _safe(m, "HomeScore", "homeScore", default="")
+        as_ = _safe(m, "AwayScore", "awayScore", default="")
+        date_raw = _safe(m, "DateMatch", "dateMatch", "date", default="")
         date_txt = _fmt_short_dt(date_raw)
-        status = _safe(m, "status", "Status", default="")
+        status = _safe(m, "Status", "status", default="")
         rows.append([date_txt, str(home), str(away), f"{hs} - {as_}", str(status)])
 
     story: list[Any] = [
