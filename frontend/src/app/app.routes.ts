@@ -126,6 +126,7 @@ export const routes: Routes = [
         m => m.TournamentsComponent
       ),
   },
+  
 
   // Fallback
   { path: '**', redirectTo: 'login' },
