@@ -1,82 +1,90 @@
+using System;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MatchesService.Data;
+using MatchesService.Hubs;
 using MatchesService.Repositories;
 using MatchesService.Services;
-using MatchesService.Services.Runtime;
-using MatchesService.Hubs;
+using MatchesService.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ==========================================================
-// 🔧 CONFIGURACIÓN DE SERVICIOS
-// ==========================================================
-
-// 1️⃣ Swagger
+// Service configuration
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// 2️⃣ Controladores + JSON
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
     {
-        options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.ReferenceLoopHandling =
+            Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+        options.SerializerSettings.Converters.Add(new TimeOnlyJsonConverter());
     });
 
-// 3️⃣ CORS (permitir peticiones desde tu frontend Angular/React)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-        policy.AllowAnyOrigin()
+    options.AddPolicy("Frontend", policy =>
+        policy.WithOrigins(
+                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]?>() ??
+                new[] { "http://localhost", "http://localhost:4200" })
               .AllowAnyHeader()
-              .AllowAnyMethod());
+              .AllowAnyMethod()
+              .AllowCredentials());
 });
 
-// 4️⃣ DbContext (base de datos de Matches)
 builder.Services.AddDbContext<MatchesDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 5️⃣ Inyección de dependencias (Repository / Service / Runtime)
 builder.Services.AddScoped<IMatchRepository, MatchRepository>();
 builder.Services.AddScoped<IMatchService, MatchService>();
-builder.Services.AddSingleton<IMatchRunTime, MatchRunTime>();
+builder.Services.Configure<TeamsServiceOptions>(builder.Configuration.GetSection("TeamsService"));
+builder.Services.AddHttpClient<ITeamClientService, TeamClientService>();
 
-// 6️⃣ SignalR (para comunicación en tiempo real)
 builder.Services.AddSignalR();
 
-// 7️⃣ HttpClient para llamadas a otros microservicios (teams-service)
-builder.Services.AddHttpClient();
-
-// ==========================================================
-// 🚀 CONSTRUCCIÓN DE LA APLICACIÓN
-// ==========================================================
 var app = builder.Build();
 
-// 1️⃣ Middleware: Swagger
+// Apply migrations with simple retry so the container waits for SQL Server
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    var db = services.GetRequiredService<MatchesDbContext>();
+
+    const int maxAttempts = 5;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++)
+    {
+        try
+        {
+            db.Database.Migrate();
+            break;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to apply migrations (attempt {Attempt}/{MaxAttempts})", attempt, maxAttempts);
+            if (attempt == maxAttempts)
+            {
+                throw;
+            }
+
+            var delaySeconds = Math.Pow(2, attempt);
+            Thread.Sleep(TimeSpan.FromSeconds(delaySeconds));
+        }
+    }
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// 2️⃣ Middleware: HTTPS + CORS
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-
-// 3️⃣ Middleware: Autenticación / Autorización (si se usa JWT o Roles)
+app.UseCors("Frontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ==========================================================
-// 🔌 ENDPOINTS Y HUBS
-// ==========================================================
-
-// Controladores API REST
 app.MapControllers();
+app.MapHub<MatchHub>("/hub/matches");
+app.MapGet("/health", () => Results.Ok("OK"));
 
-// Hub de SignalR para actualizaciones en vivo
-app.MapHub<ScoreHub>("/hub/score");
-
-// ==========================================================
-// 🟢 INICIO DE LA APLICACIÓN
-// ==========================================================
 app.Run();

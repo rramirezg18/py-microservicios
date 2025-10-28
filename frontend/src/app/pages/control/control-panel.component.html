@@ -1,0 +1,113 @@
+<div class="control-shell" [class.loading]="loading()">
+  <div class="loading-overlay" *ngIf="loading()">
+    <div class="spinner"></div>
+  </div>
+
+  <ng-container *ngIf="hasMatchSelected; else emptyState">
+    <section class="glass-panel">
+      <header class="panel-header">
+        <div class="title-block">
+          <span class="status-badge">{{ statusLabel() }}</span>
+          <h1>{{ homeName }} vs {{ awayName }}</h1>
+          <p class="match-date">{{ match()?.dateTime | date: 'EEEE d MMMM, HH:mm' }}</p>
+        </div>
+        <div class="header-actions">
+          <button class="ghost" routerLink="/admin">
+            <mat-icon>dashboard</mat-icon>
+            Panel admin
+          </button>
+          <button class="ghost" (click)="chooseMatch()">
+            <mat-icon>sports</mat-icon>
+            Elegir partido
+          </button>
+          <button class="ghost" (click)="refresh()">
+            <mat-icon>refresh</mat-icon>
+            Refrescar
+          </button>
+        </div>
+      </header>
+
+      <section class="scoreboard">
+        <article class="team-card home">
+          <div class="team-header">
+            <mat-icon>home</mat-icon>
+            <h2>{{ homeName }}</h2>
+          </div>
+          <div class="score">{{ match()?.homeScore ?? 0 }}</div>
+          <div class="score-controls">
+            <button (click)="addPoints('home', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+            <button (click)="addPoints('home', 2)" [disabled]="pendingAction() || isFinished">+2</button>
+            <button (click)="addPoints('home', 3)" [disabled]="pendingAction() || isFinished">+3</button>
+            <button (click)="addPoints('home', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+          </div>
+          <div class="fouls">
+            <span>Faltas: {{ match()?.foulsHome ?? 0 }}</span>
+            <div class="foul-controls">
+              <button (click)="adjustFoul('home', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+              <button (click)="adjustFoul('home', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="team-card away">
+          <div class="team-header">
+            <mat-icon>flight_takeoff</mat-icon>
+            <h2>{{ awayName }}</h2>
+          </div>
+          <div class="score">{{ match()?.awayScore ?? 0 }}</div>
+          <div class="score-controls">
+            <button (click)="addPoints('away', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+            <button (click)="addPoints('away', 2)" [disabled]="pendingAction() || isFinished">+2</button>
+            <button (click)="addPoints('away', 3)" [disabled]="pendingAction() || isFinished">+3</button>
+            <button (click)="addPoints('away', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+          </div>
+          <div class="fouls">
+            <span>Faltas: {{ match()?.foulsAway ?? 0 }}</span>
+            <div class="foul-controls">
+              <button (click)="adjustFoul('away', 1)" [disabled]="pendingAction() || isFinished">+1</button>
+              <button (click)="adjustFoul('away', -1)" [disabled]="pendingAction() || isFinished">-1</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="timer-panel">
+        <div class="timer-display" [class.running]="match()?.timerRunning">{{ timerDisplay() }}</div>
+        <div class="timer-actions">
+          <button (click)="controlTimer('start')" [disabled]="pendingAction() || isFinished">Iniciar</button>
+          <button (click)="controlTimer('pause')" [disabled]="pendingAction() || isFinished">Pausar</button>
+          <button (click)="controlTimer('resume')" [disabled]="pendingAction() || isFinished">Reanudar</button>
+          <button (click)="controlTimer('reset')" [disabled]="pendingAction() || isFinished">Reiniciar</button>
+        </div>
+      </section>
+
+      <section class="quarter-panel">
+        <div class="quarter-info">
+          <mat-icon>timelapse</mat-icon>
+          <span>Cuarto actual</span>
+          <strong>{{ quarter }}</strong>
+        </div>
+        <button class="accent" (click)="nextQuarter()" [disabled]="pendingAction() || isFinished">Siguiente cuarto</button>
+      </section>
+
+      <footer class="panel-footer">
+        <button class="danger" (click)="finishMatch()" [disabled]="pendingAction() || isFinished">
+          <mat-icon>flag</mat-icon>
+          Finalizar partido
+        </button>
+      </footer>
+    </section>
+  </ng-container>
+
+  <ng-template #emptyState>
+    <section class="empty-state glass-panel">
+      <mat-icon>emoji_events</mat-icon>
+      <h2>Selecciona un partido</h2>
+      <p>Programa un partido desde el panel de administración o elige uno existente para comenzar el control.</p>
+      <button class="accent" (click)="chooseMatch()">
+        <mat-icon>sports</mat-icon>
+        Elegir partido
+      </button>
+    </section>
+  </ng-template>
+</div>

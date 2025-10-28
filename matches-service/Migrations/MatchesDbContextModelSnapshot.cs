@@ -31,7 +31,9 @@ namespace MatchesService.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("DateRegister")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("MatchId")
                         .HasColumnType("int");
@@ -43,11 +45,14 @@ namespace MatchesService.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Type")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("MatchId");
+
+                    b.HasIndex("MatchId", "TeamId");
 
                     b.ToTable("Fouls");
                 });
@@ -66,8 +71,19 @@ namespace MatchesService.Migrations
                     b.Property<int>("AwayTeamId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
                     b.Property<DateTime>("DateMatch")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("FoulsAway")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FoulsHome")
+                        .HasColumnType("int");
 
                     b.Property<int>("HomeScore")
                         .HasColumnType("int");
@@ -75,19 +91,34 @@ namespace MatchesService.Migrations
                     b.Property<int>("HomeTeamId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Period")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuarterDurationSeconds")
+                    b.Property<int>("Quarter")
                         .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int>("TimeRemaining")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(600);
+
+                    b.Property<bool>("TimerRunning")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Matches");
+                    b.HasIndex("DateMatch");
+
+                    b.HasIndex("Status", "DateMatch");
+
+                    b.ToTable("Matches", t =>
+                        {
+                            t.HasCheckConstraint("CK_Match_HomeAway_Distinct", "[HomeTeamId] <> [AwayTeamId]");
+
+                            t.HasCheckConstraint("CK_Match_Quarter_Positive", "[Quarter] >= 1");
+                        });
                 });
 
             modelBuilder.Entity("MatchesService.Models.ScoreEvent", b =>
@@ -99,13 +130,16 @@ namespace MatchesService.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("DateRegister")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("MatchId")
                         .HasColumnType("int");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int?>("PlayerId")
                         .HasColumnType("int");
@@ -120,7 +154,12 @@ namespace MatchesService.Migrations
 
                     b.HasIndex("MatchId");
 
-                    b.ToTable("ScoreEvents");
+                    b.HasIndex("MatchId", "TeamId");
+
+                    b.ToTable("ScoreEvents", t =>
+                        {
+                            t.HasCheckConstraint("CK_ScoreEvent_Points_Range", "[Points] BETWEEN -3 AND 3");
+                        });
                 });
 
             modelBuilder.Entity("MatchesService.Models.TeamWin", b =>
@@ -132,7 +171,9 @@ namespace MatchesService.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("DateRegistered")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("MatchId")
                         .HasColumnType("int");
@@ -142,7 +183,8 @@ namespace MatchesService.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MatchId");
+                    b.HasIndex("MatchId")
+                        .IsUnique();
 
                     b.ToTable("TeamWins");
                 });

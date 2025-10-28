@@ -3,50 +3,33 @@ using MatchesService.Models;
 
 namespace MatchesService.Data
 {
-    /// <summary>
-    /// Contexto principal de la base de datos para el microservicio de partidos (matches-service).
-    /// Solo maneja información de partidos, puntuaciones, faltas y victorias.
-    /// Los equipos se obtienen desde el microservicio teams-service (Java).
-    /// </summary>
     public class MatchesDbContext : DbContext
     {
         public MatchesDbContext(DbContextOptions<MatchesDbContext> options)
-            : base(options)
-        {
-        }
+            : base(options) { }
 
-        // 🔹 Tablas principales del microservicio
         public DbSet<Match> Matches { get; set; } = null!;
-        public DbSet<ScoreEvent> ScoreEvents { get; set; } = null!;
-        public DbSet<Foul> Fouls { get; set; } = null!;
-        public DbSet<TeamWin> TeamWins { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // ⚙️ Configuración de relaciones internas (sin Team local)
+            // ===== MATCH =====
+            modelBuilder.Entity<Match>(e =>
+            {
+                e.Property(p => p.Status).HasMaxLength(32);
+                e.Property(p => p.TimeRemaining).HasDefaultValue(600);
+                e.Property(p => p.CreatedAtUtc).HasDefaultValueSql("GETUTCDATE()");
 
-            // Cada ScoreEvent pertenece a un partido
-            modelBuilder.Entity<ScoreEvent>()
-                .HasOne(se => se.Match)
-                .WithMany(m => m.ScoreEvents)
-                .HasForeignKey(se => se.MatchId)
-                .OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(p => p.DateTime);
+                e.HasIndex(p => new { p.Status, p.DateTime });
 
-            // Cada falta pertenece a un partido
-            modelBuilder.Entity<Foul>()
-                .HasOne(f => f.Match)
-                .WithMany(m => m.Fouls)
-                .HasForeignKey(f => f.MatchId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            // Cada TeamWin depende de un partido
-            modelBuilder.Entity<TeamWin>()
-                .HasOne(tw => tw.Match)
-                .WithMany()
-                .HasForeignKey(tw => tw.MatchId)
-                .OnDelete(DeleteBehavior.Cascade);
+                e.ToTable(tb =>
+                {
+                    tb.HasCheckConstraint("CK_Match_HomeAway_Distinct", "[HomeTeamId] <> [AwayTeamId]");
+                    tb.HasCheckConstraint("CK_Match_Quarter_Positive", "[Quarter] >= 1");
+                });
+            });
         }
     }
 }

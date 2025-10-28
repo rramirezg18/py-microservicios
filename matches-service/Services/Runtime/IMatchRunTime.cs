@@ -1,8 +1,5 @@
 namespace MatchesService.Services.Runtime;
 
-/// <summary>
-/// Define las operaciones para controlar el temporizador de los partidos.
-/// </summary>
 public record TimerSnapshot(bool IsRunning, int RemainingSeconds, DateTime? EndsAt);
 
 public interface IMatchRunTime
