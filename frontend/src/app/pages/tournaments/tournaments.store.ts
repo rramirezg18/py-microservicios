@@ -50,7 +50,7 @@ export class TournamentsStore {
   }
 
   async refresh(): Promise<void> {
-    await this.loadTournaments();
+    await this.loadTournaments(true);
   }
 
   async selectTournament(id: string): Promise<void> {
@@ -79,11 +79,11 @@ export class TournamentsStore {
     }
   }
 
-  private async loadTournaments(): Promise<void> {
+  private async loadTournaments(forceRefresh = false): Promise<void> {
     this.loadingSummariesState.set(true);
     this.errorState.set(null);
     try {
-      const summaries = await this.api.listTournaments();
+      const summaries = await this.api.listTournaments(forceRefresh);
       this.summariesState.set(summaries);
 
       const preferredId = this.selectedTournamentId();
