@@ -317,6 +317,7 @@ function createPlaceholderView(label, { groupId, slotIndex }) {
 function determineGroupResults(matchViews) {
   const winners = [];
   const seen = new Set();
+  let championCandidate = null;
 
   for (const match of matchViews) {
     if (
@@ -328,20 +329,57 @@ function determineGroupResults(matchViews) {
       continue;
     }
 
-    const winner =
-      match.teamA.score > match.teamB.score
-        ? match.teamA
-        : match.teamB.score > match.teamA.score
-        ? match.teamB
-        : null;
-    if (winner && !seen.has(winner.id)) {
-      winners.push(winner);
-      seen.add(winner.id);
+    let winnerSlot = null;
+    let opponentScore = null;
+
+    if (match.teamA.score > match.teamB.score) {
+      winnerSlot = match.teamA;
+      opponentScore = match.teamB.score ?? 0;
+    } else if (match.teamB.score > match.teamA.score) {
+      winnerSlot = match.teamB;
+      opponentScore = match.teamA.score ?? 0;
+    }
+
+    if (!winnerSlot) {
+      continue;
+    }
+
+    const winnerScore = winnerSlot.score ?? 0;
+    const margin = winnerScore - (opponentScore ?? 0);
+    const finishedAt = match.scheduledAtUtc
+      ? new Date(match.scheduledAtUtc).getTime()
+      : Number.POSITIVE_INFINITY;
+
+    if (!seen.has(winnerSlot.id)) {
+      winners.push(winnerSlot);
+      seen.add(winnerSlot.id);
+    }
+
+    const candidate = {
+      slot: winnerSlot,
+      margin,
+      winnerScore,
+      finishedAt
+    };
+
+    const isBetterCandidate =
+      !championCandidate ||
+      candidate.margin > championCandidate.margin ||
+      (candidate.margin === championCandidate.margin &&
+        candidate.winnerScore > championCandidate.winnerScore) ||
+      (candidate.margin === championCandidate.margin &&
+        candidate.winnerScore === championCandidate.winnerScore &&
+        candidate.finishedAt < championCandidate.finishedAt);
+
+    if (isBetterCandidate) {
+      championCandidate = candidate;
     }
   }
 
-  const champion = winners.length > 0 ? winners[winners.length - 1] : null;
-  return { winners, champion };
+  return {
+    winners,
+    champion: championCandidate ? championCandidate.slot : null
+  };
 }
 
 async function buildFinalView({
