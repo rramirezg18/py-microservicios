@@ -5,12 +5,13 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 app.use(cors());
 
+const TOURNAMENT_ID = 'cup-current';
 const TEAMS_SERVICE_BASE_URL =
   process.env.TEAMS_SERVICE_BASE_URL || 'http://teams-service:8082';
 const MATCHES_SERVICE_BASE_URL =
   process.env.MATCHES_SERVICE_BASE_URL || 'http://matches-service:8081';
 const PORT = parseInt(process.env.PORT || '8083', 10);
-const CACHE_TTL_MS = 60 * 1000;
+const CACHE_TTL_MS = 45 * 1000;
 
 const STATUS_LABELS = {
   scheduled: 'Programado',
@@ -18,13 +19,26 @@ const STATUS_LABELS = {
   finished: 'Finalizado'
 };
 
-let tournamentState = null;
+const tournamentConfig = {
+  id: TOURNAMENT_ID,
+  groups: {
+    'group-a': [null, null],
+    'group-b': [null, null]
+  },
+  finalMatchId: null
+};
+
+let tournamentCache = null;
+
+function resetCache() {
+  tournamentCache = null;
+}
 
 /* ------------------------------------------------------- *
  * Helpers
  * ------------------------------------------------------- */
 
-function paletteAt(index) {
+function toPalette(index) {
   const swatches = [
     { primary: '#2563eb', secondary: '#60a5fa' },
     { primary: '#f97316', secondary: '#fed7aa' },
@@ -75,11 +89,13 @@ function placeholderSlot(label) {
 }
 
 function createTeamDetail(raw, index) {
-  const palette = paletteAt(index);
+  const palette = toPalette(index);
   return {
     id: String(raw.id),
     name: raw.name || `Equipo ${raw.id}`,
-    shortName: (raw.acronym || raw.name || `EQ${raw.id}`).slice(0, 3).toUpperCase(),
+    shortName: (raw.acronym || raw.name || `EQ${raw.id}`)
+      .slice(0, 3)
+      .toUpperCase(),
     city: raw.city || null,
     coach: raw.coach || null,
     seed: index + 1,
@@ -137,14 +153,6 @@ async function fetchTeams() {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.content)) return payload.content;
   if (Array.isArray(payload?.data)) return payload.data;
-  return [];
-}
-
-async function fetchMatches() {
-  const url = new URL('/api/matches', MATCHES_SERVICE_BASE_URL);
-  const payload = await fetchJson(url);
-  if (Array.isArray(payload)) return payload;
-  if (Array.isArray(payload?.value)) return payload.value;
   return [];
 }
 
@@ -210,20 +218,30 @@ async function finishMatchInMatchesService(matchId, scoreA, scoreB) {
   }
 }
 
-function createMatchView(match, teamDetailsMap) {
+function createMatchView(match, teamDetailsMap, { groupId, slotIndex }) {
   const status = normalizeStatus(match.status);
   const statusLabel = STATUS_LABELS[status] ?? STATUS_LABELS.scheduled;
 
   const homeDetail =
-    teamDetailsMap.get(String(match.homeTeamId)) ??
+    teamDetailsMap.get(String(match.homeTeamId)) ||
     createTeamDetail(
-      { id: match.homeTeamId, name: `Equipo ${match.homeTeamId}` },
+      {
+        id: match.homeTeamId,
+        name: match.homeTeamName || `Equipo ${match.homeTeamId}`,
+        city: null,
+        coach: null
+      },
       teamDetailsMap.size
     );
   const awayDetail =
-    teamDetailsMap.get(String(match.awayTeamId)) ??
+    teamDetailsMap.get(String(match.awayTeamId)) ||
     createTeamDetail(
-      { id: match.awayTeamId, name: `Equipo ${match.awayTeamId}` },
+      {
+        id: match.awayTeamId,
+        name: match.awayTeamName || `Equipo ${match.awayTeamId}`,
+        city: null,
+        coach: null
+      },
       teamDetailsMap.size + 1
     );
 
@@ -237,8 +255,8 @@ function createMatchView(match, teamDetailsMap) {
 
   const view = {
     id: String(match.id),
-    label: match.label || 'Jornada',
-    round: (match.round || 'group'),
+    label: match.label || `Partido ${match.id}`,
+    round: match.round || 'group',
     status,
     statusLabel,
     scheduleLabel,
@@ -248,16 +266,17 @@ function createMatchView(match, teamDetailsMap) {
     teamA: {
       ...teamSlot(homeDetail),
       score:
-        typeof match.homeScore === 'number' ? match.homeScore : null,
-      isPlaceholder: false
+        typeof match.homeScore === 'number' ? match.homeScore : null
     },
     teamB: {
       ...teamSlot(awayDetail),
       score:
-        typeof match.awayScore === 'number' ? match.awayScore : null,
-      isPlaceholder: false
+        typeof match.awayScore === 'number' ? match.awayScore : null
     },
-    winnerId: null
+    winnerId: null,
+    groupId,
+    slotIndex,
+    isPlaceholder: false
   };
 
   if (
@@ -272,9 +291,26 @@ function createMatchView(match, teamDetailsMap) {
     }
   }
 
+  return view;
+}
+
+function createPlaceholderView(label, { groupId, slotIndex }) {
   return {
-    view,
-    serviceMatchId: match.id
+    id: `${groupId}-slot-${slotIndex}`,
+    label,
+    round: 'group',
+    status: 'scheduled',
+    statusLabel: 'Sin asignar',
+    scheduleLabel: 'Selecciona un partido',
+    scheduledAtUtc: null,
+    venue: 'Por definir',
+    broadcast: null,
+    teamA: placeholderSlot('Equipo A'),
+    teamB: placeholderSlot('Equipo B'),
+    winnerId: null,
+    groupId,
+    slotIndex,
+    isPlaceholder: true
   };
 }
 
@@ -284,282 +320,257 @@ function determineGroupResults(matchViews) {
 
   for (const match of matchViews) {
     if (
-      match.status === 'finished' &&
-      match.teamA.score !== null &&
-      match.teamB.score !== null
+      match.isPlaceholder ||
+      match.status !== 'finished' ||
+      match.teamA.score === null ||
+      match.teamB.score === null
     ) {
-      const winner =
-        match.teamA.score > match.teamB.score
-          ? match.teamA
-          : match.teamB.score > match.teamA.score
-          ? match.teamB
-          : null;
-      if (winner && !seen.has(winner.id)) {
-        winners.push(winner);
-        seen.add(winner.id);
-      }
+      continue;
+    }
+
+    const winner =
+      match.teamA.score > match.teamB.score
+        ? match.teamA
+        : match.teamB.score > match.teamA.score
+        ? match.teamB
+        : null;
+    if (winner && !seen.has(winner.id)) {
+      winners.push(winner);
+      seen.add(winner.id);
     }
   }
 
-  const champion =
-    winners.length > 0 ? winners[winners.length - 1] : null;
-
+  const champion = winners.length > 0 ? winners[winners.length - 1] : null;
   return { winners, champion };
 }
 
 async function buildFinalView({
   championA,
   championB,
-  usedMatchIds,
-  matches,
-  teamDetailsMap
+  existingFinalMatchId,
+  teamDetailsMap,
+  referenceDate
 }) {
-  if (!championA || !championB) {
+  if (!championA || !championB || championA.id === championB.id) {
     return {
       view: {
-        id: 'final-placeholder',
+        id: 'final-slot',
         label: 'Final',
         round: 'final',
         status: 'scheduled',
-        statusLabel: 'Pendiente',
-        scheduleLabel: 'Esperando ganadores',
+        statusLabel: 'Esperando ganadores',
+        scheduleLabel: 'Pendiente',
         scheduledAtUtc: null,
         venue: 'Arena Nacional',
         broadcast: null,
         teamA: championA ?? placeholderSlot('Ganador Grupo A'),
         teamB: championB ?? placeholderSlot('Ganador Grupo B'),
-        winnerId: null
+        winnerId: null,
+        groupId: 'final',
+        slotIndex: 0,
+        isPlaceholder: true
       },
-      serviceMatchId: null
+      serviceMatchId: existingFinalMatchId
     };
   }
 
-  const targetPair = new Set([championA.id, championB.id]);
-  const existing = matches.find((match) => {
-    const idString = String(match.id);
-    if (usedMatchIds.has(idString)) return false;
-    const teams = new Set([
-      String(match.homeTeamId),
-      String(match.awayTeamId)
-    ]);
-    return (
-      teams.size === 2 &&
-      teams.has(championA.id) &&
-      teams.has(championB.id)
-    );
-  });
-
-  let finalMatchRecord = existing;
-
-  if (!finalMatchRecord) {
-    const latestGroupDate = [...usedMatchIds]
-      .map((id) => matches.find((m) => String(m.id) === id))
-      .filter(Boolean)
-      .map((match) => new Date(match.dateTime).getTime())
-      .reduce((max, value) => Math.max(max, value || 0), Date.now());
-
-    const scheduledAt = new Date(latestGroupDate + 24 * 60 * 60 * 1000);
+  if (!existingFinalMatchId) {
+    const scheduledAt = new Date(referenceDate.getTime() + 2 * 24 * 60 * 60 * 1000);
     const newMatchId = await scheduleMatch(
       Number(championA.id),
       Number(championB.id),
       scheduledAt
     );
     if (newMatchId) {
-      try {
-        finalMatchRecord = await fetchMatchById(newMatchId);
-      } catch (error) {
-        console.warn(
-          '[tournament-service] final match fetch failed',
-          error?.message || error
-        );
-        finalMatchRecord = {
-          id: newMatchId,
-          label: 'Final',
-          round: 'final',
-          status: 'Scheduled',
-          dateTime: scheduledAt.toISOString(),
-          homeTeamId: Number(championA.id),
-          awayTeamId: Number(championB.id),
-          homeScore: 0,
-          awayScore: 0
-        };
-      }
+      tournamentConfig.finalMatchId = newMatchId;
+      resetCache();
+      return buildFinalView({
+        championA,
+        championB,
+        existingFinalMatchId: newMatchId,
+        teamDetailsMap,
+        referenceDate: scheduledAt
+      });
     }
-  }
 
-  if (!finalMatchRecord) {
     return {
       view: {
-        id: 'final-placeholder',
+        id: 'final-slot',
         label: 'Final',
         round: 'final',
         status: 'scheduled',
-        statusLabel: 'Pendiente',
-        scheduleLabel: 'Programar final',
+        statusLabel: 'Programar final',
+        scheduleLabel: 'Selecciona partido',
         scheduledAtUtc: null,
         venue: 'Arena Nacional',
         broadcast: null,
         teamA: championA,
         teamB: championB,
-        winnerId: null
+        winnerId: null,
+        groupId: 'final',
+        slotIndex: 0,
+        isPlaceholder: true
       },
       serviceMatchId: null
     };
   }
 
-  const { view, serviceMatchId } = createMatchView(
-    {
-      ...finalMatchRecord,
-      label: finalMatchRecord.label || 'Final',
-      round: finalMatchRecord.round || 'final'
-    },
-    teamDetailsMap
-  );
-  return { view, serviceMatchId };
+  try {
+    const record = await fetchMatchById(existingFinalMatchId);
+    const view = createMatchView(record, teamDetailsMap, {
+      groupId: 'final',
+      slotIndex: 0
+    });
+    view.round = 'final';
+    view.label = view.label || 'Final';
+    view.isPlaceholder = false;
+    return { view, serviceMatchId: existingFinalMatchId };
+  } catch (error) {
+    console.warn(
+      '[tournament-service] final match fetch failed',
+      error?.message || error
+    );
+    return {
+      view: {
+        id: 'final-slot',
+        label: 'Final',
+        round: 'final',
+        status: 'scheduled',
+        statusLabel: 'Programar final',
+        scheduleLabel: 'Selecciona partido',
+        scheduledAtUtc: null,
+        venue: 'Arena Nacional',
+        broadcast: null,
+        teamA: championA,
+        teamB: championB,
+        winnerId: null,
+        groupId: 'final',
+        slotIndex: 0,
+        isPlaceholder: true
+      },
+      serviceMatchId: null
+    };
+  }
 }
 
-async function buildTournamentState(forceRefresh = false) {
+async function buildTournamentState(force = false) {
   if (
-    tournamentState &&
-    !forceRefresh &&
-    Date.now() - tournamentState.createdAt < CACHE_TTL_MS
+    !force &&
+    tournamentCache &&
+    Date.now() - tournamentCache.createdAt < CACHE_TTL_MS
   ) {
-    return tournamentState;
+    return tournamentCache;
   }
 
-  const [teams, matches] = await Promise.all([
-    fetchTeams(),
-    fetchMatches()
-  ]);
-
-  if (!matches.length) {
-    throw new Error('No hay partidos programados todavía.');
-  }
-
+  const teams = await fetchTeams();
   const teamDetailsMap = new Map();
-  teams.forEach((team, index) => {
-    teamDetailsMap.set(
-      String(team.id),
-      createTeamDetail(team, index)
-    );
-  });
-
-  const orderedMatches = matches
-    .filter((match) => match.status)
-    .sort((a, b) => {
-      const da = new Date(a.dateTime || 0).getTime();
-      const db = new Date(b.dateTime || 0).getTime();
-      return da - db;
-    });
-
-  const groupMatchesPool = orderedMatches.slice(0, 4);
-  const usedServiceMatchIds = new Set();
-
-  const groupAViews = [];
-  const groupBViews = [];
-
-  groupMatchesPool.forEach((match, index) => {
-    const label = `Jornada ${index + 1}`;
-    const { view } = createMatchView(
-      { ...match, label, round: 'group' },
-      teamDetailsMap
-    );
-    usedServiceMatchIds.add(String(match.id));
-    if (index % 2 === 0) {
-      groupAViews.push(view);
-    } else {
-      groupBViews.push(view);
-    }
-  });
-
-  if (groupAViews.length === 0) {
-    groupAViews.push({
-      id: 'placeholder-a-1',
-      label: 'Jornada 1',
-      round: 'group',
-      status: 'scheduled',
-      statusLabel: STATUS_LABELS.scheduled,
-      scheduleLabel: 'Pendiente',
-      scheduledAtUtc: null,
-      venue: 'Estadio Principal',
-      broadcast: null,
-      teamA: placeholderSlot('Equipo A1'),
-      teamB: placeholderSlot('Equipo A2'),
-      winnerId: null
-    });
-  }
-  if (groupBViews.length === 0) {
-    groupBViews.push({
-      id: 'placeholder-b-1',
-      label: 'Jornada 1',
-      round: 'group',
-      status: 'scheduled',
-      statusLabel: STATUS_LABELS.scheduled,
-      scheduleLabel: 'Pendiente',
-      scheduledAtUtc: null,
-      venue: 'Estadio Principal',
-      broadcast: null,
-      teamA: placeholderSlot('Equipo B1'),
-      teamB: placeholderSlot('Equipo B2'),
-      winnerId: null
-    });
-  }
-
-  const { winners: groupAWinners, champion: championA } =
-    determineGroupResults(groupAViews);
-  const { winners: groupBWinners, champion: championB } =
-    determineGroupResults(groupBViews);
-
-  const remainingMatches = orderedMatches.filter(
-    (match) => !usedServiceMatchIds.has(String(match.id))
+  teams.forEach((team, index) =>
+    teamDetailsMap.set(String(team.id), createTeamDetail(team, index))
   );
+
+  const groups = [];
+  const actualMatches = [];
+  const finishedMatches = [];
+  const groupChampions = {};
+
+  for (const [groupId, slots] of Object.entries(tournamentConfig.groups)) {
+    const matchViews = [];
+    for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+      const matchId = slots[slotIndex];
+      if (!matchId) {
+        matchViews.push(
+          createPlaceholderView(`Slot ${slotIndex + 1}`, {
+            groupId,
+            slotIndex
+          })
+        );
+        continue;
+      }
+
+      try {
+        const record = await fetchMatchById(matchId);
+        const view = createMatchView(record, teamDetailsMap, {
+          groupId,
+          slotIndex
+        });
+        matchViews.push(view);
+        actualMatches.push(view);
+        if (view.status === 'finished') {
+          finishedMatches.push(view);
+        }
+      } catch (error) {
+        console.warn(
+          '[tournament-service] failed to fetch match',
+          matchId,
+          error?.message || error
+        );
+        matchViews.push(
+          createPlaceholderView(`Slot ${slotIndex + 1}`, {
+            groupId,
+            slotIndex
+          })
+        );
+      }
+    }
+
+    const result = determineGroupResults(matchViews);
+    groupChampions[groupId] = result.champion;
+
+    groups.push({
+      id: groupId,
+      name: groupId === 'group-a' ? 'Grupo A' : 'Grupo B',
+      color: toPalette(groupId === 'group-a' ? 0 : 1).secondary,
+      matches: matchViews,
+      qualifiers: result.winners,
+      semiFinal: null
+    });
+  }
+
+  const championA = groupChampions['group-a'] ?? null;
+  const championB = groupChampions['group-b'] ?? null;
+
+  const referenceDate = actualMatches
+    .map((match) =>
+      match.scheduledAtUtc ? new Date(match.scheduledAtUtc).getTime() : 0
+    )
+    .reduce((max, value) => Math.max(max, value || 0), Date.now());
 
   const finalInfo = await buildFinalView({
     championA,
     championB,
-    usedMatchIds: usedServiceMatchIds,
-    matches: remainingMatches,
-    teamDetailsMap
+    existingFinalMatchId: tournamentConfig.finalMatchId,
+    teamDetailsMap,
+    referenceDate: new Date(referenceDate || Date.now())
   });
 
-  if (finalInfo.serviceMatchId) {
-    usedServiceMatchIds.add(String(finalInfo.serviceMatchId));
+  const finalView = finalInfo.view;
+  if (finalInfo.serviceMatchId && finalInfo.serviceMatchId !== tournamentConfig.finalMatchId) {
+    tournamentConfig.finalMatchId = finalInfo.serviceMatchId;
   }
 
-  const matchLookup = {};
-  for (const view of [...groupAViews, ...groupBViews]) {
-    if (!view.id.startsWith('placeholder')) {
-      matchLookup[view.id] = {
-        view,
-        serviceMatchId: Number(view.id)
-      };
+  if (!finalView.isPlaceholder) {
+    actualMatches.push(finalView);
+    if (finalView.status === 'finished') {
+      finishedMatches.push(finalView);
     }
   }
 
-  if (finalInfo.serviceMatchId) {
-    matchLookup[String(finalInfo.serviceMatchId)] = {
-      view: finalInfo.view,
-      serviceMatchId: finalInfo.serviceMatchId
-    };
-  }
-
-  const matchViews = [
-    ...groupAViews,
-    ...groupBViews,
-    finalInfo.view
-  ];
-
-  const matchesPlayed = matchViews.filter(
-    (match) => match.status === 'finished'
-  ).length;
-  const totalMatches = matchViews.filter(
-    (match) => !match.id.startsWith('placeholder')
-  ).length;
+  const matchesPlayed = finishedMatches.length;
+  const totalMatches = actualMatches.length;
   const progress =
     totalMatches > 0 ? matchesPlayed / totalMatches : 0;
 
+  const winner =
+    finalView.status === 'finished' && finalView.winnerId
+      ? finalView.winnerId === finalView.teamA.id
+        ? finalView.teamA
+        : finalView.teamB
+      : null;
+
+  const teamsIndex = Object.fromEntries(teamDetailsMap);
+
   const detail = {
-    id: 'cup-current',
+    id: TOURNAMENT_ID,
     code: 'CUP-2025',
     name: 'Copa Invitacional',
     heroTitle: 'Copa Invitacional 2025',
@@ -567,47 +578,24 @@ async function buildTournamentState(forceRefresh = false) {
     location: 'Sedes Oficiales',
     venue: 'Arena Nacional',
     description:
-      'Torneo generado dinámicamente con los partidos programados actuales.',
-    scheduleLabel: `${new Intl.DateTimeFormat('es-ES', {
+      'Torneo armado con partidos programados en el servicio de partidos.',
+    scheduleLabel: `${new Intl.DateTimeFormat('es-ES', { month: 'short' }).format(
+      new Date()
+    )} ${new Date().getFullYear()} - ${new Intl.DateTimeFormat('es-ES', {
       month: 'short'
-    }).format(new Date())} ${new Date().getFullYear()} - ${new Intl.DateTimeFormat(
-      'es-ES',
-      { month: 'short' }
-    ).format(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))} ${new Date().getFullYear()}`,
+    }).format(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000))} ${new Date().getFullYear()}`,
     updatedLabel: formatUpdatedLabel(new Date()),
     domain: 'scoreboard.local',
     progress,
     matchesPlayed,
     totalMatches,
     summary:
-      'Fase de grupos a un partido y gran final entre los líderes de cada grupo.',
-    groups: [
-      {
-        id: 'group-a',
-        name: 'Grupo A',
-        color: paletteAt(0).secondary,
-        matches: groupAViews,
-        qualifiers: groupAWinners,
-        semiFinal: null
-      },
-      {
-        id: 'group-b',
-        name: 'Grupo B',
-        color: paletteAt(1).secondary,
-        matches: groupBViews,
-        qualifiers: groupBWinners,
-        semiFinal: null
-      }
-    ],
-    final: finalInfo.view,
-    winner:
-      finalInfo.view.status === 'finished' && finalInfo.view.winnerId
-        ? finalInfo.view.winnerId === finalInfo.view.teamA.id
-          ? finalInfo.view.teamA
-          : finalInfo.view.teamB
-        : null,
-    teams: Array.from(teamDetailsMap.values()).slice(0, 16),
-    teamsIndex: Object.fromEntries(teamDetailsMap)
+      'Selecciona dos partidos por grupo y deja que los ganadores se enfrenten en la final.',
+    groups,
+    final: finalView,
+    winner,
+    teams: Object.values(teamsIndex),
+    teamsIndex
   };
 
   const summary = {
@@ -623,23 +611,107 @@ async function buildTournamentState(forceRefresh = false) {
     totalMatches: detail.totalMatches
   };
 
-  tournamentState = {
+  tournamentCache = {
     summary,
     detail,
-    matchLookup,
     createdAt: Date.now()
   };
 
-  return tournamentState;
+  return tournamentCache;
 }
 
-async function ensureState(forceRefresh = false) {
-  try {
-    return await buildTournamentState(forceRefresh);
-  } catch (error) {
-    console.error('[tournament-service] rebuild error', error?.message || error);
-    throw error;
+async function ensureState(force = false) {
+  return buildTournamentState(force);
+}
+
+async function getAssignedMatchRecords({
+  excludeGroup = null,
+  excludeSlot = null,
+  excludeFinal = false
+} = {}) {
+  const records = [];
+
+  for (const [groupId, slots] of Object.entries(tournamentConfig.groups)) {
+    for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+      if (groupId === excludeGroup && slotIndex === excludeSlot) continue;
+      const matchId = slots[slotIndex];
+      if (!matchId) continue;
+      try {
+        const record = await fetchMatchById(matchId);
+        records.push(record);
+      } catch (error) {
+        console.warn(
+          '[tournament-service] validation fetch failed',
+          matchId,
+          error?.message || error
+        );
+      }
+    }
   }
+
+  if (
+    !excludeFinal &&
+    tournamentConfig.finalMatchId &&
+    tournamentConfig.finalMatchId !== null
+  ) {
+    try {
+      const record = await fetchMatchById(tournamentConfig.finalMatchId);
+      records.push(record);
+    } catch (error) {
+      console.warn(
+        '[tournament-service] final validation fetch failed',
+        tournamentConfig.finalMatchId,
+        error?.message || error
+      );
+    }
+  }
+
+  return records;
+}
+
+async function validateAssignment(groupId, slotIndex, matchId) {
+  if (!Number.isInteger(matchId) || matchId <= 0) {
+    throw new Error('Identificador de partido inválido.');
+  }
+
+  const alreadyUsed =
+    Object.values(tournamentConfig.groups)
+      .flat()
+      .includes(matchId) || tournamentConfig.finalMatchId === matchId;
+  if (alreadyUsed) {
+    throw new Error('Ese partido ya está asignado en el torneo.');
+  }
+
+  const newMatch = await fetchMatchById(matchId);
+  const newStatus = normalizeStatus(newMatch.status);
+  const newTeams = [
+    String(newMatch.homeTeamId),
+    String(newMatch.awayTeamId)
+  ];
+
+  if (newTeams[0] === newTeams[1]) {
+    throw new Error('El partido seleccionado tiene equipos duplicados.');
+  }
+
+  const otherMatches = await getAssignedMatchRecords({
+    excludeGroup: groupId,
+    excludeSlot: slotIndex
+  });
+
+  for (const match of otherMatches) {
+    const teams = [
+      String(match.homeTeamId),
+      String(match.awayTeamId)
+    ];
+    const overlap = teams.some((teamId) => newTeams.includes(teamId));
+    if (overlap) {
+      throw new Error(
+        'Uno de los equipos ya tiene otro partido asignado en el bracket.'
+      );
+    }
+  }
+
+  return newMatch;
 }
 
 /* ------------------------------------------------------- *
@@ -656,52 +728,91 @@ app.get('/api/tournaments', async (req, res) => {
     const state = await ensureState(force);
     res.json([state.summary]);
   } catch (error) {
+    console.error('[tournament-service] list error', error?.message || error);
     res.status(502).json({ error: 'No se pudieron obtener los torneos.' });
   }
 });
 
 app.get('/api/tournaments/:id', async (req, res) => {
+  if (req.params.id !== TOURNAMENT_ID) {
+    return res.status(404).json({ error: 'Torneo no encontrado.' });
+  }
+
   try {
-    const state = await ensureState(req.query.refresh === 'true');
-    if (state.detail.id !== req.params.id) {
-      return res.status(404).json({ error: 'Torneo no encontrado.' });
-    }
+    const force = req.query.refresh === 'true';
+    const state = await ensureState(force);
     res.json(state.detail);
   } catch (error) {
+    console.error('[tournament-service] detail error', error?.message || error);
     res.status(502).json({ error: 'No se pudo cargar el torneo solicitado.' });
   }
 });
 
-app.patch('/api/tournaments/:id/matches/:mid', async (req, res) => {
+app.put('/api/tournaments/:id/groups/:groupId/slots/:slotIndex', async (req, res) => {
+  if (req.params.id !== TOURNAMENT_ID) {
+    return res.status(404).json({ error: 'Torneo no encontrado.' });
+  }
+
+  const { groupId } = req.params;
+  const slotIndex = Number.parseInt(req.params.slotIndex, 10);
+
+  if (!Object.prototype.hasOwnProperty.call(tournamentConfig.groups, groupId)) {
+    return res.status(400).json({ error: 'Grupo inválido.' });
+  }
+
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 1) {
+    return res.status(400).json({ error: 'Posición de slot inválida.' });
+  }
+
+  const { matchId } = req.body || {};
+
   try {
-    const state = await ensureState(true);
-    if (state.detail.id !== req.params.id) {
-      return res.status(404).json({ error: 'Torneo no encontrado.' });
+    if (matchId === null || matchId === undefined) {
+      tournamentConfig.groups[groupId][slotIndex] = null;
+      tournamentConfig.finalMatchId = null;
+      resetCache();
+      const state = await ensureState(true);
+      return res.json(state.detail);
     }
 
-    const matchMeta = state.matchLookup[req.params.mid];
-    if (!matchMeta || !matchMeta.serviceMatchId) {
-      return res
-        .status(404)
-        .json({ error: 'Partido no encontrado dentro del torneo.' });
+    await validateAssignment(groupId, slotIndex, Number(matchId));
+    tournamentConfig.groups[groupId][slotIndex] = Number(matchId);
+    tournamentConfig.finalMatchId = null;
+    resetCache();
+    const state = await ensureState(true);
+    return res.json(state.detail);
+  } catch (error) {
+    console.error(
+      '[tournament-service] assignment error',
+      error?.message || error
+    );
+    return res.status(400).json({
+      error: error?.message || 'No se pudo asignar el partido al bracket.'
+    });
+  }
+});
+
+app.patch('/api/tournaments/:id/matches/:mid', async (req, res) => {
+  if (req.params.id !== TOURNAMENT_ID) {
+    return res.status(404).json({ error: 'Torneo no encontrado.' });
+  }
+
+  try {
+    const matchId = Number(req.params.mid);
+    if (!Number.isInteger(matchId) || matchId <= 0) {
+      return res.status(400).json({ error: 'Identificador de partido inválido.' });
     }
 
     const { scoreA = null, scoreB = null, status } = req.body || {};
     if (status === 'finished') {
-      await finishMatchInMatchesService(
-        matchMeta.serviceMatchId,
-        scoreA,
-        scoreB
-      );
+      await finishMatchInMatchesService(matchId, scoreA, scoreB);
     }
 
-    const refreshed = await ensureState(true);
-    res.json(refreshed.detail);
+    resetCache();
+    const state = await ensureState(true);
+    res.json(state.detail);
   } catch (error) {
-    console.error(
-      '[tournament-service] update error',
-      error?.message || error
-    );
+    console.error('[tournament-service] update error', error?.message || error);
     res.status(502).json({ error: 'No se pudo actualizar el partido.' });
   }
 });

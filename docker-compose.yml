@@ -28,8 +28,6 @@ services:
     ports:
       - "5000:8080"
     entrypoint: ["dotnet", "AuthService.dll"]
-    volumes:
-      - /home/roberto/.microsoft/usersecrets:/root/.microsoft/usersecrets
 
   # Frontend (Nginx) 
   web:

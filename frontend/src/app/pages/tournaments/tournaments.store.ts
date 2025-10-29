@@ -7,6 +7,8 @@ import {
 } from './tournaments.models';
 import { TournamentsApiService } from '@app/services/api/tournaments.service';
 
+const DEFAULT_TOURNAMENT_ID = 'cup-current';
+
 function ensureTeamIndex(tournament: TournamentViewModel): Record<string, TournamentTeamDetail> {
   if (tournament.teamsIndex && Object.keys(tournament.teamsIndex).length) {
     return tournament.teamsIndex;
@@ -65,6 +67,7 @@ export class TournamentsStore {
   async updateMatchResult(tournamentId: string, matchId: string, scoreA: number, scoreB: number): Promise<void> {
     const payload: UpdateMatchRequest = { scoreA, scoreB, status: 'finished' };
     try {
+      this.errorState.set(null);
       const updated = await this.api.updateMatch(tournamentId, matchId, payload);
       const normalized: TournamentViewModel = {
         ...updated,
@@ -76,6 +79,33 @@ export class TournamentsStore {
     } catch (error) {
       console.error('Failed to update match result', error);
       this.errorState.set('No se pudo actualizar el resultado del partido.');
+    }
+  }
+
+  async assignMatchToSlot(groupId: string, slotIndex: number, matchId: number | null): Promise<void> {
+    const tournamentId = this.selectedTournamentId() ?? DEFAULT_TOURNAMENT_ID;
+    try {
+      const updated = await this.api.assignMatchToSlot(
+        tournamentId,
+        groupId,
+        slotIndex,
+        matchId
+      );
+      const normalized: TournamentViewModel = {
+        ...updated,
+        teamsIndex: ensureTeamIndex(updated)
+      };
+      this.tournamentDetailState.set(normalized);
+      this.selectedTournamentId.set(normalized.id);
+      this.syncSummary(normalized);
+    } catch (error: any) {
+      const message =
+        error?.error?.error ??
+        error?.message ??
+        'No se pudo asignar el partido al bracket.';
+      console.error('Failed to assign match to slot', message);
+      this.errorState.set(message);
+      throw error;
     }
   }
 

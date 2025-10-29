@@ -39,4 +39,18 @@ export class TournamentsApiService {
       )
     );
   }
+
+  assignMatchToSlot(
+    tournamentId: string,
+    groupId: string,
+    slotIndex: number,
+    matchId: number | null
+  ): Promise<TournamentViewModel> {
+    return firstValueFrom(
+      this.http.put<TournamentViewModel>(
+        `${this.base}/tournaments/${tournamentId}/groups/${groupId}/slots/${slotIndex}`,
+        { matchId }
+      )
+    );
+  }
 }
