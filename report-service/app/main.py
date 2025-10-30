@@ -16,7 +16,19 @@ from .aggregators import teams_map, match_roster, aggregate_stats_from_matches
 
 app = FastAPI()
 
-AUTH_SECRET = os.getenv("AUTH_SECRET", "change_me")
+def _parse_secret_values(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+    parts: list[str] = []
+    for chunk in raw.replace("\n", ",").split(","):
+        value = chunk.strip()
+        if value:
+            parts.append(value)
+    return parts
+
+AUTH_SECRETS = _parse_secret_values(os.getenv("AUTH_SECRET")) or [
+    "change_me"
+]
 ALGO = os.getenv("ALGO", "HS256")
 AUTH_AUDIENCE = os.getenv("AUTH_AUDIENCE")
 
@@ -42,10 +54,18 @@ async def require_admin(authorization: str | None = Header(default=None)) -> Non
     else:
         decode_kwargs["options"] = {"verify_aud": False}
 
-    try:
-        payload = jwt.decode(token, AUTH_SECRET, **decode_kwargs)
-    except JWTError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid RS bearer: {e}")
+    payload: dict[str, Any] | None = None
+    last_error: JWTError | None = None
+    for secret in AUTH_SECRETS:
+        try:
+            payload = jwt.decode(token, secret, **decode_kwargs)
+            break
+        except JWTError as exc:
+            last_error = exc
+            continue
+
+    if payload is None:
+        raise HTTPException(status_code=401, detail=f"Invalid RS bearer: {last_error}")
     role = (payload.get("role") or payload.get("roles") or "").lower()
     if "admin" not in str(role):
         raise HTTPException(status_code=403, detail="RS bearer not admin")
