@@ -63,8 +63,55 @@ export class AuthenticationService {
   }
 
   isAdmin(): boolean {
-    const u = this.getUser();
-    return u?.role === 'Admin';
+    const user = this.getUser();
+    if (!user) return false;
+
+    const collectRoles = (value: unknown): string[] => {
+      if (!value) return [];
+      if (Array.isArray(value)) {
+        return value.flatMap((v) => collectRoles(v));
+      }
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) return [];
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed)) {
+            return parsed.flatMap(collectRoles);
+          }
+        } catch {
+          // value wasn't JSON, treat it as plain string
+        }
+        return [trimmed.toLowerCase()];
+      }
+      if (typeof value === 'object') {
+        const obj = value as Record<string, unknown>;
+        const maybeName =
+          typeof obj.name === 'string'
+            ? obj.name
+            : typeof obj.Name === 'string'
+            ? obj.Name
+            : undefined;
+        return maybeName ? [maybeName.trim().toLowerCase()] : [];
+      }
+      return [];
+    };
+
+    const roleCandidates: string[] = [
+      ...collectRoles(user.role),
+      ...collectRoles(user.Role),
+      ...collectRoles(user.roleName),
+      ...collectRoles(user.roles),
+      ...collectRoles(user.Roles),
+    ];
+
+    const hasAdminRole = roleCandidates.some((r) => r === 'admin');
+
+    const username: unknown = user.username ?? user.Username;
+    const githubAdmin =
+      typeof username === 'string' && username.toLowerCase().startsWith('github:');
+
+    return hasAdminRole || githubAdmin;
   }
 
   logout() {

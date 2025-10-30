@@ -1,7 +1,7 @@
 from collections.abc import Iterable
+from datetime import datetime
 from io import BytesIO
 from typing import Any, Optional
-from datetime import datetime
 
 from reportlab.lib import colors, pagesizes
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -15,7 +15,21 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+# -------------------- THEME --------------------
+THEME_BG = colors.HexColor("#080E1F")
+STRIP_TOP = colors.HexColor("#1D2670")
+STRIP_BOTTOM = colors.HexColor("#0B1328")
+CARD_BG = colors.HexColor("#111B2E")
+ACCENT = colors.HexColor("#6366F1")
+ACCENT_SOFT = colors.HexColor("#8B5CF6")
+TEXT_PRIMARY = colors.HexColor("#F8FAFC")
+TEXT_MUTED = colors.HexColor("#CBD5F5")
+GRID_COLOR = colors.HexColor("#1E293B")
+ROW_BACKGROUNDS = [colors.HexColor("#101A2D"), colors.HexColor("#0C1322")]
+HEADER_TEXT = colors.HexColor("#F5F6FF")
 
+
+# -------------------- UTILIDADES BASE --------------------
 def _doc(buf: BytesIO) -> SimpleDocTemplate:
     return SimpleDocTemplate(
         buf,
@@ -30,288 +44,345 @@ def _doc(buf: BytesIO) -> SimpleDocTemplate:
 
 
 def _styles():
-    s = getSampleStyleSheet()
+    sample = getSampleStyleSheet()
     title = ParagraphStyle(
         "TitleBig",
-        parent=s["Title"],
+        parent=sample["Title"],
         fontSize=18,
         leading=22,
         alignment=TA_CENTER,
         spaceAfter=10,
+        textColor=TEXT_PRIMARY,
+        fontName="Helvetica-Bold",
     )
     h2 = ParagraphStyle(
         "H2",
-        parent=s["Heading2"],
+        parent=sample["Heading2"],
         spaceBefore=10,
         spaceAfter=6,
+        textColor=TEXT_PRIMARY,
+        fontName="Helvetica-Bold",
     )
     normal = ParagraphStyle(
         "Normal",
-        parent=s["Normal"],
+        parent=sample["Normal"],
         alignment=TA_LEFT,
         fontSize=10,
         leading=13,
+        textColor=TEXT_PRIMARY,
     )
-    return title, h2, normal
+    muted = ParagraphStyle(
+        "Muted",
+        parent=normal,
+        fontSize=9,
+        leading=12,
+        textColor=TEXT_MUTED,
+    )
+    return title, h2, normal, muted
+
+
+def _draw_background(pdf_canvas, _doc):
+    width, height = pagesizes.A4
+    pdf_canvas.saveState()
+
+    pdf_canvas.setFillColor(THEME_BG)
+    pdf_canvas.rect(0, 0, width, height, stroke=0, fill=1)
+
+    pdf_canvas.setFillColor(STRIP_TOP)
+    pdf_canvas.rect(0, height - 42, width, 42, stroke=0, fill=1)
+
+    pdf_canvas.setFillColor(STRIP_BOTTOM)
+    pdf_canvas.rect(0, 0, width, 28, stroke=0, fill=1)
+
+    pdf_canvas.setFillColor(ACCENT_SOFT)
+    pdf_canvas.circle(width * 0.82, height * 0.88, 120, stroke=0, fill=1)
+    pdf_canvas.restoreState()
+
+
+def _build(doc: SimpleDocTemplate, story: list[Any]) -> None:
+    doc.build(story, onFirstPage=_draw_background, onLaterPages=_draw_background)
 
 
 def _table(data: list[list[Any]], col_widths: list[float] | None = None) -> Table:
-    t = Table(data, colWidths=col_widths or "100%")
-    t.setStyle(
+    table = Table(data, colWidths=col_widths or "100%")
+    table.setStyle(
         TableStyle(
             [
+                ("BACKGROUND", (0, 0), (-1, -1), CARD_BG),
+                ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HEADER_TEXT),
+                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                 ("FONTSIZE", (0, 0), (-1, 0), 10),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2F2F2")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#333333")),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#CCCCCC")),
                 ("FONTSIZE", (0, 1), (-1, -1), 9),
+                ("TEXTCOLOR", (0, 1), (-1, -1), TEXT_PRIMARY),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                (
-                    "ROWBACKGROUNDS",
-                    (0, 1),
-                    (-1, -1),
-                    [colors.white, colors.HexColor("#FAFAFA")],
-                ),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), ROW_BACKGROUNDS),
+                ("INNERGRID", (0, 0), (-1, -1), 0.25, GRID_COLOR),
+                ("BOX", (0, 0), (-1, -1), 0.35, GRID_COLOR),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )
-    return t
+    return table
 
 
 def _safe(d: dict[str, Any], *keys: str, default: str = "-") -> Any:
-    for k in keys:
-        if k in d and d[k] not in (None, ""):
-            return d[k]
+    for key in keys:
+        if key in d and d[key] not in (None, ""):
+            return d[key]
     return default
 
 
 def _fmt_short_dt(raw: Any) -> str:
-    """
-    Devuelve 'YYYY-MM-DD HH:mm' si se puede parsear; si no, str(raw).
-    """
     if raw is None:
         return "-"
-    s = str(raw)
+    value = str(raw)
     try:
-        # soporta '...Z'
-        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
         return dt.strftime("%Y-%m-%d %H:%M")
     except Exception:
-        # último recurso: sólo fecha si viene con 'T'
-        if "T" in s:
-            return s.split("T", 1)[0]
-        return s
+        if "T" in value:
+            return value.split("T", 1)[0]
+        return value
 
 
-# ------------------- BUILDERS -------------------
-
-
+# -------------------- BUILDERS --------------------
 def build_pdf_teams(teams: Iterable[dict[str, Any]]) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, normal = _styles()
+    title, _, _, muted = _styles()
 
     rows: list[list[Any]] = [["ID", "Name", "City", "Coach"]]
-    for t in teams:
-        if not isinstance(t, dict):
+    for team in teams:
+        if not isinstance(team, dict):
             continue
         rows.append(
             [
-                _safe(t, "id", "Id", "teamId", "TeamId", default="-"),
-                _safe(t, "name", "Name", "teamName", "TeamName", default="-"),
-                _safe(t, "city", "City", "location", "Location", default="-"),
-                _safe(t, "coach", "Coach", "manager", "Manager", default="-"),
+                _safe(team, "id", "Id", "teamId", "TeamId", default="-"),
+                _safe(team, "name", "Name", "teamName", "TeamName", default="-"),
+                _safe(team, "city", "City", "location", "Location", default="-"),
+                _safe(team, "coach", "Coach", "manager", "Manager", default="-"),
             ]
         )
 
     story: list[Any] = [
         Paragraph("Listado de Equipos", title),
         Spacer(1, 6),
-        Paragraph(f"Total: {len(rows)-1}", normal),
+        Paragraph(f"Total: {len(rows) - 1}", muted),
         Spacer(1, 8),
         _table(rows, col_widths=[50, 220, 150, 130]),
     ]
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
 
-def build_pdf_players_by_team(team_id: str, players: Iterable[dict[str, Any]], team_name: str | None=None) -> bytes:
+def build_pdf_players_by_team(
+    team_id: str,
+    players: Iterable[dict[str, Any]],
+    team_name: str | None = None,
+) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, normal = _styles()
+    title, _, _, muted = _styles()
 
     rows: list[list[Any]] = [["#", "Player", "Age", "Position"]]
-    for i, p in enumerate(players, 1):
-        if not isinstance(p, dict):
+    for index, player in enumerate(players, 1):
+        if not isinstance(player, dict):
             continue
-        rows.append([
-            i,
-            _safe(p, "name", "Name", default=""),
-            _safe(p, "age", "Age", default="-"),
-            _safe(p, "position", "Position", default=""),
-        ])
+        rows.append(
+            [
+                index,
+                _safe(player, "name", "Name", default=""),
+                _safe(player, "age", "Age", default="-"),
+                _safe(player, "position", "Position", default=""),
+            ]
+        )
 
-    titulo = f"Jugadores del Equipo {team_name}  (#{team_id})" if team_name else f"Jugadores del Equipo #{team_id}"
-
+    heading = (
+        f"Jugadores del Equipo {team_name} (#{team_id})"
+        if team_name
+        else f"Jugadores del Equipo #{team_id}"
+    )
     story: list[Any] = [
-        Paragraph(titulo, title),
+        Paragraph(heading, title),
         Spacer(1, 6),
-        Paragraph(f"Total: {len(rows)-1}", normal),
+        Paragraph(f"Total: {len(rows) - 1}", muted),
         Spacer(1, 8),
         _table(rows, col_widths=[28, 260, 70, 140]),
     ]
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
 
-def build_pdf_all_players(players: Iterable[dict[str, Any]], team_name_by_id: dict[str, str]) -> bytes:
+def build_pdf_all_players(
+    players: Iterable[dict[str, Any]],
+    team_name_by_id: dict[str, str],
+) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, normal = _styles()
+    title, _, _, muted = _styles()
 
     rows: list[list[Any]] = [["#", "Player", "Team", "Age", "Position"]]
-    for i, p in enumerate(players, 1):
-        if not isinstance(p, dict):
+    for index, player in enumerate(players, 1):
+        if not isinstance(player, dict):
             continue
-        team_id = str(_safe(p, "team_id", "teamId", "TeamId", default=""))
+        team_id = str(_safe(player, "team_id", "teamId", "TeamId", default=""))
         team_name = team_name_by_id.get(team_id, team_id or "-")
-        rows.append([
-            i,
-            _safe(p, "name", "Name", default=""),
-            team_name,
-            _safe(p, "age", "Age", default="-"),
-            _safe(p, "position", "Position", default=""),
-        ])
+        rows.append(
+            [
+                index,
+                _safe(player, "name", "Name", default=""),
+                team_name,
+                _safe(player, "age", "Age", default="-"),
+                _safe(player, "position", "Position", default=""),
+            ]
+        )
 
     story: list[Any] = [
         Paragraph("Jugadores Registrados", title),
         Spacer(1, 6),
-        Paragraph(f"Total: {len(rows)-1}", normal),
+        Paragraph(f"Total: {len(rows) - 1}", muted),
         Spacer(1, 8),
-        _table(rows, col_widths=[28, 180, 170, 60, 130]),
+        _table(rows, col_widths=[28, 190, 170, 60, 80]),
     ]
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
 
-def build_pdf_matches_history(matches: Iterable[dict[str, Any]], from_date: str | None, to_date: str | None, team_name_by_id: dict[str,str] | None=None) -> bytes:
+def build_pdf_matches_history(
+    matches: Iterable[dict[str, Any]],
+    from_date: Optional[str],
+    to_date: Optional[str],
+    teams: dict[str, str],
+) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, normal = _styles()
+    title, _, _, muted = _styles()
 
-    hdr = "Historial de Partidos"
-    if from_date or to_date:
-        hdr += f" (rango: {from_date or '...'} → {to_date or '...'})"
-
-    rows: list[list[Any]] = [["Fecha", "Local", "Visitante", "Marcador", "Estado"]]
-    for m in matches:
-        if not isinstance(m, dict):
+    rows: list[list[Any]] = [["#", "Home", "Score", "Away", "Date"]]
+    for index, match in enumerate(matches, 1):
+        if not isinstance(match, dict):
             continue
-        hid = str(_safe(m, "HomeTeamId", "homeTeamId", default=""))
-        aid = str(_safe(m, "AwayTeamId", "awayTeamId", default=""))
-        home = (team_name_by_id or {}).get(hid, hid)
-        away = (team_name_by_id or {}).get(aid, aid)
-        hs = _safe(m, "HomeScore", "homeScore", default="")
-        as_ = _safe(m, "AwayScore", "awayScore", default="")
-        date_raw = _safe(m, "DateMatch", "dateMatch", "date", default="")
-        date_txt = _fmt_short_dt(date_raw)
-        status = _safe(m, "Status", "status", default="")
-        rows.append([date_txt, str(home), str(away), f"{hs} - {as_}", str(status)])
+        home_id = str(
+            match.get("HomeTeamId")
+            or match.get("homeTeamId")
+            or match.get("home_id")
+            or ""
+        )
+        away_id = str(
+            match.get("AwayTeamId")
+            or match.get("awayTeamId")
+            or match.get("away_id")
+            or ""
+        )
+        home_score = _safe(match, "HomeScore", "homeScore", default="-")
+        away_score = _safe(match, "AwayScore", "awayScore", default="-")
+        rows.append(
+            [
+                index,
+                teams.get(home_id, home_id or "-"),
+                f"{home_score}-{away_score}",
+                teams.get(away_id, away_id or "-"),
+                _fmt_short_dt(
+                    match.get("DateMatch")
+                    or match.get("dateMatch")
+                    or match.get("date")
+                ),
+            ]
+        )
 
-    story: list[Any] = [
-        Paragraph(hdr, title),
-        Spacer(1, 6),
-        Paragraph(f"Total partidos: {len(rows)-1}", normal),
-        Spacer(1, 8),
-        _table(rows, col_widths=[110, 170, 170, 70, 90]),
-    ]
-    doc.build(story)
+    story: list[Any] = [Paragraph("Historial de Partidos", title), Spacer(1, 6)]
+    if from_date or to_date:
+        story += [
+            Paragraph(
+                f"Rango filtrado: {from_date or '-'} a {to_date or '-'}", muted
+            ),
+            Spacer(1, 6),
+        ]
+    story.append(_table(rows, col_widths=[28, 170, 70, 170, 80]))
+    _build(doc, story)
     return buf.getvalue()
 
 
 def build_pdf_match_roster(match_id: str, roster: dict[str, Any]) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, h2, normal = _styles()
+    title, h2, normal, muted = _styles()
 
-    story: list[Any] = [
-        Paragraph(f"Roster del Partido #{match_id}", title),
-        Spacer(1, 8),
-    ]
+    story: list[Any] = [Paragraph(f"Roster del Partido #{match_id}", title), Spacer(1, 6)]
+
+    match = roster.get("match") or {}
+    if match:
+        home_name = _safe(match, "HomeTeamName", "homeTeamName", default="Local")
+        away_name = _safe(match, "AwayTeamName", "awayTeamName", default="Visitante")
+        meta_rows = [
+            ["Fecha", _fmt_short_dt(match.get("DateMatch") or match.get("dateMatch"))],
+            ["Estado", _safe(match, "Status", "status", default="-")],
+            [
+                "Marcador",
+                f"{_safe(match, 'HomeScore', 'homeScore', default='0')} - {_safe(match, 'AwayScore', 'awayScore', default='0')}",
+            ],
+        ]
+        story += [
+            _table(meta_rows, col_widths=[120, 320]),
+            Spacer(1, 10),
+            Paragraph(f"{home_name} vs {away_name}", normal),
+            Spacer(1, 8),
+        ]
 
     home = roster.get("homeTeam") or roster.get("HomeTeam") or {}
     away = roster.get("awayTeam") or roster.get("AwayTeam") or {}
-    home_name = _safe(home, "name", "Name", default="Local")
-    away_name = _safe(away, "name", "Name", default="Visitante")
 
-    # Home
-    story += [Paragraph(f"{home_name}", h2)]
-    home_players = home.get("players") or home.get("Players") or []
-    if home_players:
-        rows = [["#", "Player", "Position", "Number"]]
-        for i, p in enumerate(home_players, 1):
-            if not isinstance(p, dict):
-                continue
-            rows.append(
-                [
-                    i,
-                    _safe(p, "name", "Name", default=""),
-                    _safe(p, "position", "Position", default=""),
-                    _safe(p, "number", "Number", "jersey", "Jersey", default=""),
-                ]
-            )
-        story += [_table(rows), Spacer(1, 6)]
-    else:
-        story += [Paragraph("Sin detalles de jugadores.", normal), Spacer(1, 6)]
+    def _team_block(label: str, payload: dict[str, Any]) -> list[Any]:
+        block: list[Any] = [Paragraph(label, h2)]
+        players = payload.get("players") or payload.get("Players") or []
+        if players:
+            data = [["#", "Player", "Position", "Number"]]
+            for idx, player in enumerate(players, 1):
+                if not isinstance(player, dict):
+                    continue
+                data.append(
+                    [
+                        idx,
+                        _safe(player, "name", "Name", default=""),
+                        _safe(player, "position", "Position", default=""),
+                        _safe(player, "number", "Number", "jersey", "Jersey", default=""),
+                    ]
+                )
+            block += [_table(data), Spacer(1, 6)]
+        else:
+            block += [Paragraph("Sin detalles de jugadores.", muted), Spacer(1, 6)]
+        return block
 
-    # Away
-    story += [Paragraph(f"{away_name}", h2)]
-    away_players = away.get("players") or away.get("Players") or []
-    if away_players:
-        rows = [["#", "Player", "Position", "Number"]]
-        for i, p in enumerate(away_players, 1):
-            if not isinstance(p, dict):
-                continue
-            rows.append(
-                [
-                    i,
-                    _safe(p, "name", "Name", default=""),
-                    _safe(p, "position", "Position", default=""),
-                    _safe(p, "number", "Number", "jersey", "Jersey", default=""),
-                ]
-            )
-        story += [_table(rows), Spacer(1, 6)]
-    else:
-        story += [Paragraph("Sin detalles de jugadores.", normal), Spacer(1, 6)]
+    story += _team_block(_safe(home, "name", "Name", default="Local"), home)
+    story += _team_block(_safe(away, "name", "Name", default="Visitante"), away)
 
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
 
 def build_pdf_player_stats(player_id: str, stats: dict[str, Any]) -> bytes:
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, _ = _styles()
+    title, _, _, _ = _styles()
 
     rows = [["Campo", "Valor"]]
     if isinstance(stats, dict):
-        for k, v in stats.items():
-            rows.append([str(k), str(v)])
+        for key, value in stats.items():
+            rows.append([str(key), str(value)])
     else:
         rows.append(["-", "-"])
 
     story: list[Any] = [
-        Paragraph(f"Estadísticas del Jugador #{player_id}", title),
+        Paragraph(f"Estadisticas del Jugador #{player_id}", title),
         Spacer(1, 8),
-        _table(rows),
+        _table(rows, col_widths=[180, 260]),
     ]
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
 
@@ -321,57 +392,53 @@ def build_pdf_stats_summary(
     subtitle: Optional[str] = None,
     col_widths: Optional[list[float]] = None,
 ) -> list[Any]:
-    """
-    Crea una sección (título h2 + tabla). Devuelve elementos para añadir a la story.
-    """
-    _, h2, _ = _styles()
+    _, h2, _, muted = _styles()
     elems: list[Any] = [Paragraph(title_text, h2)]
     if subtitle:
-        elems.append(Paragraph(subtitle, getSampleStyleSheet()["Normal"]))
-        elems.append(Spacer(1, 4))
+        elems.extend([Paragraph(subtitle, muted), Spacer(1, 4)])
     elems.append(_table(rows, col_widths=col_widths))
     elems.append(Spacer(1, 10))
     return elems
 
 
 def build_pdf_stats_report(sections: list[tuple[str, list[list[Any]]]]) -> bytes:
-    """
-    sections: lista de (titulo_seccion, data_table)
-    """
     buf = BytesIO()
     doc = _doc(buf)
-    title, _, _ = _styles()
+    title, _, _, _ = _styles()
 
-    story: list[Any] = [Paragraph("Resumen de Estadísticas", title), Spacer(1, 8)]
-
-    for title_text, data in sections:
+    story: list[Any] = [Paragraph("Resumen de Estadisticas", title), Spacer(1, 8)]
+    for section_title, data in sections:
         story += build_pdf_stats_summary(
-            title_text, data, col_widths=[28, 240, 60, 40, 40, 60, 60]
+            section_title,
+            data,
+            col_widths=[28, 240, 60, 40, 40, 60, 60],
         )
 
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()
 
+
 def build_pdf_standings(rows: list[dict[str, Any]]) -> bytes:
-    """
-    rows: [{id, name, color, wins}, ...] (ya vienen ordenados)
-    """
     buf = BytesIO()
-    doc = _doc(buf)  # usa pagesizes.A4 desde _doc
-    title, _, normal = _styles()
+    doc = _doc(buf)
+    title, _, _, muted = _styles()
 
     data: list[list[Any]] = [["#", "Equipo", "Victorias"]]
-    for i, r in enumerate(rows, 1):
-        nombre = str(r.get("name", ""))
-        wins = int(r.get("wins", 0) or 0)
-        data.append([i, nombre, wins])
+    for index, entry in enumerate(rows, 1):
+        data.append(
+            [
+                index,
+                str(entry.get("name", "")),
+                int(entry.get("wins", 0) or 0),
+            ]
+        )
 
     story: list[Any] = [
         Paragraph("Tabla de Posiciones", title),
         Spacer(1, 6),
-        Paragraph(f"Total: {len(rows)}", normal),
+        Paragraph(f"Total: {len(rows)}", muted),
         Spacer(1, 8),
         _table(data, col_widths=[28, 340, 90]),
     ]
-    doc.build(story)
+    _build(doc, story)
     return buf.getvalue()

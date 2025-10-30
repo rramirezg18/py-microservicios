@@ -1,74 +1,179 @@
-<div class="p-6 max-w-4xl mx-auto space-y-6">
-  <h1 class="text-2xl font-bold">Reportes & Estadísticas</h1>
+﻿<div class="reports-root">
+  <header class="reports-hero">
+    <div>
+      <h1>Reportes y estadisticas</h1>
+      <p>Consulta informacion consolidada de equipos, jugadores y encuentros.</p>
+    </div>
+  </header>
 
-  <p *ngIf="errorMsg()" class="text-red-600">{{ errorMsg() }}</p>
+  <section id="standings" class="report-card dark-surface">
+    <div class="card-head">
+      <h2>Tabla de posiciones</h2>
+      <div class="actions">
+        <button
+          class="btn btn--accent"
+          (click)="downloadStandingsPdf()"
+          [disabled]="standingsLoading()"
+        >
+          Descargar PDF
+        </button>
+        <button
+          class="btn"
+          type="button"
+          (click)="openStandingsDialog()"
+          [disabled]="!standings().length"
+        >
+          Ver detalle
+        </button>
+      </div>
+    </div>
 
-  <!-- Tabla de Posiciones -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Tabla de Posiciones</h2>
-    <button class="btn" (click)="downloadStandings()">Descargar standings.pdf</button>
+    <p class="alert" *ngIf="standingsError()">{{ standingsError() }}</p>
+
+    <div *ngIf="standingsLoading()" class="state">Cargando tabla...</div>
+    <div *ngIf="!standingsLoading() && !standings().length" class="state">No hay datos para mostrar.</div>
+
+    <div class="table-wrapper" *ngIf="standings().length">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Equipo</th>
+            <th>PJ</th>
+            <th>PG</th>
+            <th>PP</th>
+            <th>PF</th>
+            <th>PC</th>
+            <th>DIF</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of standings()">
+            <td>{{ row.rank }}</td>
+            <td>{{ row.team }}</td>
+            <td>{{ row.played }}</td>
+            <td>{{ row.wins }}</td>
+            <td>{{ row.losses }}</td>
+            <td>{{ row.pf }}</td>
+            <td>{{ row.pa }}</td>
+            <td [class.positive]="row.diff >= 0">{{ row.diff }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
-  <!-- Estadísticas (resumen) -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Estadística</h2>
-    <button class="btn" (click)="downloadStatsSummary()">Descargar Estadísticas.pdf</button>
+  <section class="report-card">
+    <div class="card-head">
+      <h2>Resumen estadistico</h2>
+      <button class="btn" (click)="downloadStatsSummaryPdf()" [disabled]="statsLoading()">
+        Descargar PDF
+      </button>
+    </div>
+
+    <p class="alert" *ngIf="statsError()">{{ statsError() }}</p>
+    <div *ngIf="statsLoading()" class="state">Calculando resumen...</div>
+
+    <ng-container *ngIf="!statsLoading() && statsSummary() as snapshot">
+      <div class="grid-four">
+        <article>
+          <header>Mas victorias</header>
+          <ol>
+            <li *ngFor="let item of snapshot.topWins">
+              <span class="pos">{{ item.rank }}.</span>
+              <span class="team">{{ item.team }}</span>
+              <span class="value">{{ item.wins }} PG</span>
+            </li>
+          </ol>
+        </article>
+        <article>
+          <header>Mas puntos a favor</header>
+          <ol>
+            <li *ngFor="let item of snapshot.topPointsFor">
+              <span class="pos">{{ item.rank }}.</span>
+              <span class="team">{{ item.team }}</span>
+              <span class="value">{{ item.pf }} PF</span>
+            </li>
+          </ol>
+        </article>
+        <article>
+          <header>Menos puntos a favor</header>
+          <ol>
+            <li *ngFor="let item of snapshot.lowestPointsFor">
+              <span class="pos">{{ item.rank }}.</span>
+              <span class="team">{{ item.team }}</span>
+              <span class="value">{{ item.pf }} PF</span>
+            </li>
+          </ol>
+        </article>
+        <article>
+          <header>Menos derrotas</header>
+          <ol>
+            <li *ngFor="let item of snapshot.fewestLosses">
+              <span class="pos">{{ item.rank }}.</span>
+              <span class="team">{{ item.team }}</span>
+              <span class="value">{{ item.losses }} PP</span>
+            </li>
+          </ol>
+        </article>
+      </div>
+      <small class="updated">Generado: {{ snapshot.generatedAtUtc | date:'medium' }}</small>
+    </ng-container>
   </section>
 
-  <!-- Todos los Jugadores -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Jugadores Registrados</h2>
-    <button class="btn" (click)="downloadAllPlayers()">Descargar players_all.pdf</button>
+  <section class="report-card">
+    <div class="card-head">
+      <h2>Descargas rapidas</h2>
+    </div>
+
+    <p class="alert" *ngIf="downloadError()">{{ downloadError() }}</p>
+
+    <div class="download-grid">
+      <button class="btn" (click)="downloadTeamsPdf()">Equipos</button>
+      <button class="btn" (click)="downloadAllPlayersPdf()">Jugadores (todos)</button>
+      <button class="btn" (click)="downloadStandingsPdf()">Standings</button>
+      <button class="btn" (click)="downloadStatsSummaryPdf()">Resumen</button>
+    </div>
   </section>
 
-  <!-- Equipos -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Equipos Registrados</h2>
-    <button class="btn" (click)="downloadTeams()">Descargar equipos.pdf</button>
-  </section>
-
-  <!-- Jugadores por Equipo -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Jugadores por Equipo</h2>
-
-    <div class="flex gap-2 items-center">
-      <label>Equipo:</label>
+  <section class="report-card">
+    <div class="card-head">
+      <h2>Jugadores por equipo</h2>
+      <button class="btn" (click)="downloadPlayersByTeamPdf()">Descargar PDF</button>
+    </div>
+    <div class="form-row">
+      <label>Equipo</label>
       <select [disabled]="loadingTeams()" [(ngModel)]="teamId">
         <option [ngValue]="null" disabled>-- selecciona --</option>
         <option *ngFor="let t of teams()" [ngValue]="t.id">{{ t.name }}</option>
       </select>
-
-      <button class="btn" (click)="downloadPlayersByTeam()">Descargar players.pdf</button>
+      <span class="hint" *ngIf="loadingTeams()">Cargando equipos...</span>
     </div>
-
-    <small *ngIf="loadingTeams()">Cargando equipos…</small>
   </section>
 
-  <!-- Historial de Partidos -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Historial de Partidos</h2>
-
-    <div class="flex gap-2 items-center">
-      <label>Desde:</label>
+  <section class="report-card">
+    <div class="card-head">
+      <h2>Historial de partidos</h2>
+      <button class="btn" (click)="downloadMatchesHistoryPdf()">Descargar PDF</button>
+    </div>
+    <div class="filters">
+      <label>Desde</label>
       <input type="date" [(ngModel)]="from" />
-      <label>Hasta:</label>
+      <label>Hasta</label>
       <input type="date" [(ngModel)]="to" />
-      <button class="btn" (click)="downloadMatchesHistory()">Descargar history.pdf</button>
     </div>
   </section>
 
-  <!-- Roster por Partido -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Roster por Partido</h2>
-
-    <div class="flex gap-2 items-center">
-      <label>Match ID:</label>
-      <input type="number" [(ngModel)]="matchId" placeholder="e.g. 4" />
-      <button class="btn" (click)="downloadMatchRoster()">Descargar roster.pdf</button>
+  <section class="report-card">
+    <div class="card-head">
+      <h2>Roster por partido</h2>
+      <button class="btn" (click)="downloadMatchRosterPdf()">Descargar PDF</button>
+    </div>
+    <div class="form-row">
+      <label>Match ID</label>
+      <input type="number" [(ngModel)]="matchId" placeholder="Ej: 4" />
     </div>
   </section>
 </div>
 
-<style>
-  .btn { padding: .5rem .9rem; border: 1px solid #ddd; border-radius: .5rem; }
-</style>
+

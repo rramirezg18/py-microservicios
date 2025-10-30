@@ -1,14 +1,10 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { StandingRow } from '@app/services/api/reports.service';
 
-export interface StandingRow {
-  id: number;
-  name: string;
-  color?: string;
-  wins: number;
-}
+
 
 @Component({
   selector: 'app-standings-dialog',
@@ -30,3 +26,4 @@ export class StandingsDialogComponent {
     this.dialogRef.close();
   }
 }
+
