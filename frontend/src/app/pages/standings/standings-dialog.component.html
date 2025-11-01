@@ -6,17 +6,24 @@
       <tr>
         <th>#</th>
         <th>Equipo</th>
-        <th>Victorias</th>
+        <th>PJ</th>
+        <th>PG</th>
+        <th>PP</th>
+        <th>PF</th>
+        <th>PC</th>
+        <th>DIF</th>
       </tr>
     </thead>
     <tbody>
       <tr *ngFor="let r of rows; let i = index">
         <td class="rank">{{ i + 1 }}</td>
-        <td class="team">
-          <span class="dot" *ngIf="r.color" [style.background]="r.color"></span>
-          {{ r.name }}
-        </td>
-        <td class="wins">{{ r.wins }}</td>
+        <td class="team">{{ r.team }}</td>
+        <td class="metric">{{ r.played }}</td>
+        <td class="metric">{{ r.wins }}</td>
+        <td class="metric">{{ r.losses }}</td>
+        <td class="metric">{{ r.pf }}</td>
+        <td class="metric">{{ r.pa }}</td>
+        <td class="metric diff" [class.positive]="r.diff >= 0">{{ r.diff }}</td>
       </tr>
     </tbody>
   </table>

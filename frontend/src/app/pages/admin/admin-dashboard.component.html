@@ -1,10 +1,10 @@
-<ng-container *ngIf="isAdmin">
+﻿<ng-container *ngIf="isAdmin">
   <!-- HERO -->
   <header class="admin-hero">
     <div class="hero-content">
       <div class="hero-titles">
-        <h1>Panel de Administración</h1>
-        <p>Elige una sección</p>
+        <h1>Panel de Administracion</h1>
+        <p>Elige una seccion</p>
       </div>
 
       <div #logoutWrap class="logout-wrap">
@@ -12,7 +12,7 @@
           <mat-icon>logout</mat-icon> Logout
         </button>
         <div class="logout-menu" [class.open]="logoutOpen">
-          <button class="menu-item" (click)="logout()">Cerrar sesión</button>
+          <button class="menu-item" (click)="logout()">Cerrar sesion</button>
         </div>
       </div>
     </div>
@@ -28,33 +28,33 @@
         <div class="kpi-ico"><mat-icon>stadium</mat-icon></div>
         <div class="kpi-body">
           <span class="kpi-label">Torneos</span>
-          <span class="kpi-value">—</span>
+          <span class="kpi-value">-</span>
         </div>
       </div>
       <div class="kpi">
         <div class="kpi-ico"><mat-icon>today</mat-icon></div>
         <div class="kpi-body">
           <span class="kpi-label">Partidos hoy</span>
-          <span class="kpi-value">—</span>
+          <span class="kpi-value">-</span>
         </div>
       </div>
       <div class="kpi">
         <div class="kpi-ico"><mat-icon>groups</mat-icon></div>
         <div class="kpi-body">
           <span class="kpi-label">Equipos</span>
-          <span class="kpi-value">—</span>
+          <span class="kpi-value">-</span>
         </div>
       </div>
       <div class="kpi">
         <div class="kpi-ico"><mat-icon>person</mat-icon></div>
         <div class="kpi-body">
           <span class="kpi-label">Jugadores</span>
-          <span class="kpi-value">—</span>
+          <span class="kpi-value">-</span>
         </div>
       </div>
     </section>
 
-    <!-- Acciones rápidas -->
+    <!-- Acciones rapidas -->
     <section class="quick-actions">
       <a class="qa pill" routerLink="/tournaments"><mat-icon>add_circle</mat-icon> Crear torneo</a>
       <a class="qa pill" [routerLink]="['/control', (matchId || 1)]"><mat-icon>sports</mat-icon> Nuevo partido</a>
@@ -64,7 +64,6 @@
     <!-- GRID PRINCIPAL -->
     <section class="dashboard-grid">
 
-      <!-- Tarjetas de navegación (tus cards, con estilo nuevo) -->
       <div class="cards">
         <a class="card" [routerLink]="['/score', (matchId || 1)]">
           <div class="icon"><mat-icon>query_stats</mat-icon></div>
@@ -72,7 +71,7 @@
             <h3 class="title">Scoreboard</h3>
             <p class="desc">Ver marcador en vivo</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
         </a>
 
         <a class="card" [routerLink]="['/control', matchId]">
@@ -81,7 +80,16 @@
             <h3 class="title">Control</h3>
             <p class="desc">Panel del operador</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
+        </a>
+
+        <a class="card" routerLink="/programar">
+          <div class="icon"><mat-icon>calendar_month</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Programar Partido</h3>
+            <p class="desc">Agenda nuevos enfrentamientos</p>
+          </div>
+          <div class="chev">&rsaquo;</div>
         </a>
 
         <a class="card" routerLink="/players">
@@ -90,7 +98,7 @@
             <h3 class="title">Players</h3>
             <p class="desc">Gestiona el plantel</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
         </a>
 
         <a class="card" routerLink="/teams">
@@ -99,7 +107,7 @@
             <h3 class="title">Teams</h3>
             <p class="desc">Crea y edita equipos</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
         </a>
 
         <a class="card" routerLink="/tournaments">
@@ -108,30 +116,38 @@
             <h3 class="title">Tournaments</h3>
             <p class="desc">Programa y administra partidos</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
         </a>
 
-        <a class="card" routerLink="/reports">
+        <a class="card" routerLink="/admin/reports">
           <div class="icon"><mat-icon>picture_as_pdf</mat-icon></div>
           <div class="meta">
             <h3 class="title">Reports</h3>
             <p class="desc">PDFs de equipos, jugadores y partidos</p>
           </div>
-          <div class="chev">›</div>
+          <div class="chev">&rsaquo;</div>
+        </a>
+
+        <a class="card" routerLink="/admin/reports" fragment="standings">
+          <div class="icon"><mat-icon>leaderboard</mat-icon></div>
+          <div class="meta">
+            <h3 class="title">Standings</h3>
+            <p class="desc">Tabla de posiciones</p>
+          </div>
+          <div class="chev">&rsaquo;</div>
         </a>
       </div>
 
-      <!-- Agenda compacta -->
       <div class="panel agenda">
         <header>Agenda</header>
         <ul class="agenda-list">
           <li><span class="date">Hoy 19:00</span><span class="txt">Equipo A vs Equipo B</span><a [routerLink]="['/control', (matchId || 1)]">Ver</a></li>
-          <li><span class="date">Mañana 18:30</span><span class="txt">Equipo C vs Equipo D</span><a routerLink="/tournaments">Detalle</a></li>
+          <li><span class="date">Manana 18:30</span><span class="txt">Equipo C vs Equipo D</span><a routerLink="/tournaments">Detalle</a></li>
           <li><span class="date">Vie 20:00</span><span class="txt">Semifinal</span><a routerLink="/tournaments">Detalle</a></li>
         </ul>
       </div>
 
-      <!-- Gráfico placeholder (SVG, cero dependencias) -->
+      <!-- Grafico placeholder (SVG, cero dependencias) -->
       <div class="panel chart">
         <header>Actividad</header>
         <svg viewBox="0 0 300 100" preserveAspectRatio="none" class="spark">

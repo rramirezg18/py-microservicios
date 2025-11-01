@@ -1,0 +1,82 @@
+HTTP/1.1 200 OK
+Server: nginx/1.29.3
+Date: Sat, 01 Nov 2025 00:42:47 GMT
+Content-Type: application/pdf
+Transfer-Encoding: chunked
+Connection: keep-alive
+content-disposition: attachment; filename="players_1.pdf"
+
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document http://www.reportlab.com
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 8 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 7 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/PageMode /UseNone /Pages 7 0 R /Type /Catalog
+>>
+endobj
+6 0 obj
+<<
+/Author (report-service) /CreationDate (D:20251101004247+00'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20251101004247+00'00') /Producer (ReportLab PDF Library - www.reportlab.com) 
+  /Subject (\(unspecified\)) /Title (Reportes) /Trapped /False
+>>
+endobj
+7 0 obj
+<<
+/Count 1 /Kids [ 4 0 R ] /Type /Pages
+>>
+endobj
+8 0 obj
+<<
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 506
+>>
+stream
+GasIb9i'e'&A@7.N5VP8@6ES2fR)A<\k!Qk!]fredBp:82G6Yri7BciPN$?+7H;>;Rl@*$o+3/PLB#^<i)]q<^CcR#=9**0Tt#_pOhG;X0hj8G.8,b,'$a\A3_mk[DO)/a^gg:qhf;'cFDXC>[[f@oj:ZOZ(NUEf%a/m!2q8u3eHX#HLXk9#*hUX<cQ6\n$_1L/6Eu:)$Ed/T=k5aVO>Lg8dY8'#IB-XBmCWiFQD%LLUS<2h2a7:h:&bekAl+/(_Q)CBF["1q]_7NHoO:D(<f%"I*F/1KRgKp4go?>dbNNY@E.']cU9OVV!d/B-F!:s7Ku1'hMe&iPUIf^fPGXi?]kW:i$C*<bo[KMVC7(oq'9jSadsAcT?.HQ?S9iVPi6Mk*_1j"U7M0e=ae@M+FJ]I)e]0A1Hqu);VOQrje(]Q'RQKJHSI#Pk4P[4Q#2XY.\%s>=Cu@$UZ@h3E,/5N\q+i$c*&2n1N$=;q)S$n^5\2.lhAph_!jYUSb1jl~>endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000073 00000 n 
+0000000114 00000 n 
+0000000221 00000 n 
+0000000333 00000 n 
+0000000536 00000 n 
+0000000604 00000 n 
+0000000883 00000 n 
+0000000942 00000 n 
+trailer
+<<
+/ID 
+[<59c9cd79f0cfff3d86809d8460448a72><59c9cd79f0cfff3d86809d8460448a72>]
+% ReportLab generated PDF document -- digest (http://www.reportlab.com)
+
+/Info 6 0 R
+/Root 5 0 R
+/Size 9
+>>
+startxref
+1538
+%%EOF

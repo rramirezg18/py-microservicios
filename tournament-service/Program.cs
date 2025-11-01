@@ -1,17 +1,19 @@
-using TournamentService.Services; // <-- La directiva using que faltaba o era incorrecta
+// Program.cs
+using Microsoft.EntityFrameworkCore;
+using TournametsService.Data;
+using TournametsService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var teamsServiceUrl = builder.Configuration["ServiceUrls:TeamsService"];
-if (string.IsNullOrEmpty(teamsServiceUrl))
-{
-    throw new InvalidOperationException("La URL del servicio de equipos no está configurada en appsettings.json.");
-}
+// Connection string (usa la del compose en contenedor; en host puedes usar 127.0.0.1)
+var conn = builder.Configuration.GetConnectionString("DefaultConnection")
+           ?? "Server=db,1433;Database=tournamentsDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=True;Encrypt=False";
 
-builder.Services.AddHttpClient<TeamsServiceHttpClient>(client =>
-{
-    client.BaseAddress = new Uri(teamsServiceUrl);
-});
+builder.Services.AddDbContext<TournametsDbContext>(opt =>
+    opt.UseSqlServer(conn));
+
+// Servicios de dominio
+builder.Services.AddScoped<TournamentQueryService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -25,7 +27,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
 app.MapControllers();
 app.Run();

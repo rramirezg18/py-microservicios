@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using MatchesService.Data;              // ⬅️ FALTABA ESTE using (DbContext)
+using MatchesService.Data;              // DbContext
 using MatchesService.Hubs;
 using MatchesService.Models;
 using MatchesService.Models.DTOs;
@@ -9,11 +9,13 @@ using MatchesService.Repositories;
 using MatchesService.Services.Runtime;
 using Newtonsoft.Json.Linq;
 using System.Net.Http.Json;
+using System.Collections.Concurrent;
 
 namespace MatchesService.Services
 {
     /// <summary>
     /// Lógica de negocio de partidos. Integra teams-service vía HTTP.
+    /// Emite eventos a SignalR para sincronizar Scoreboard/Control.
     /// </summary>
     public class MatchService : IMatchService
     {
@@ -22,7 +24,9 @@ namespace MatchesService.Services
         private readonly IHubContext<ScoreHub> _hub;
         private readonly HttpClient _http;
         private readonly string _teamsApiBase;
-        private readonly MatchesDbContext _db; // DbContext inyectado para transacciones
+        private readonly MatchesDbContext _db;
+
+        private static readonly ConcurrentDictionary<int, TimerState> _timers = new();
 
         public MatchService(
             IMatchRepository repo,
@@ -35,12 +39,30 @@ namespace MatchesService.Services
             _repo = repo;
             _runTime = runTime;
             _hub = hub;
-            _http = httpFactory.CreateClient();
+            _http = httpFactory.CreateClient("teams");
             _db = db;
 
             _teamsApiBase = (config["TeamsService:BaseUrl"] ?? "http://teams-service:8082/api/teams").TrimEnd('/');
             if (!_teamsApiBase.EndsWith("/teams", StringComparison.OrdinalIgnoreCase))
                 _teamsApiBase += "/teams";
+        }
+
+        // -------- Helpers --------
+        private Task BroadcastAsync(int matchId, string method, object payload)
+            => _hub.Clients.Group(ScoreHub.GroupName(matchId)).SendAsync(method, payload);
+
+        private static int CalcRemainingSeconds(TimerState s)
+        {
+            if (!s.Running) return Math.Max(0, s.RemainingSecondsAtStart);
+            var elapsed = (int)Math.Floor((DateTime.UtcNow - s.StartedAtUtc).TotalSeconds);
+            return Math.Max(0, s.RemainingSecondsAtStart - elapsed);
+        }
+
+        private sealed class TimerState
+        {
+            public bool Running { get; set; }
+            public DateTime StartedAtUtc { get; set; }
+            public int RemainingSecondsAtStart { get; set; }
         }
 
         // ==================== CONSULTAS ====================
@@ -63,19 +85,18 @@ namespace MatchesService.Services
             {
                 var homeResp = await _http.GetAsync($"{_teamsApiBase}/{match.HomeTeamId}");
                 if (homeResp.IsSuccessStatusCode)
-                {
-                    var homeJson = await homeResp.Content.ReadAsStringAsync();
-                    homeTeam = JObject.Parse(homeJson);
-                }
+                    homeTeam = JObject.Parse(await homeResp.Content.ReadAsStringAsync());
 
                 var awayResp = await _http.GetAsync($"{_teamsApiBase}/{match.AwayTeamId}");
                 if (awayResp.IsSuccessStatusCode)
-                {
-                    var awayJson = await awayResp.Content.ReadAsStringAsync();
-                    awayTeam = JObject.Parse(awayJson);
-                }
+                    awayTeam = JObject.Parse(await awayResp.Content.ReadAsStringAsync());
             }
-            catch { /* enriquecimiento best-effort */ }
+            catch { /* best-effort */ }
+
+            var state = _timers.TryGetValue(id, out var ts) ? ts : null;
+            var remaining = state is null
+                ? (match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 0)
+                : CalcRemainingSeconds(state);
 
             return new
             {
@@ -86,9 +107,18 @@ namespace MatchesService.Services
                 match.AwayTeamId,
                 match.HomeScore,
                 match.AwayScore,
-                match.Period,
+                Period = match.Period,
                 HomeTeam = homeTeam,
-                AwayTeam = awayTeam
+                AwayTeam = awayTeam,
+                timer = new
+                {
+                    running = state?.Running ?? false,
+                    remainingSeconds = remaining,
+                    quarter = match.Period,
+                    quarterEndsAtUtc = (state is not null && state.Running)
+                        ? DateTime.UtcNow.AddSeconds(remaining).ToString("o")
+                        : null
+                }
             };
         }
 
@@ -113,6 +143,9 @@ namespace MatchesService.Services
                 var awayExists = await _http.GetAsync($"{_teamsApiBase}/{dto.AwayTeamId}");
                 if (!homeExists.IsSuccessStatusCode || !awayExists.IsSuccessStatusCode)
                     return (false, "Uno o ambos equipos no existen en teams-service", null);
+
+                if (dto.DateMatch.Year < 2000)
+                    return (false, "dateMatch es obligatorio y debe venir en ISO 8601, ej: 2025-11-02T15:00:00", null);
 
                 var match = new Match
                 {
@@ -150,7 +183,6 @@ namespace MatchesService.Services
         // ==================== CREAR RÁPIDO ====================
         public async Task<(bool Success, string? Error, object? Data)> NewGameAsync(NewGameDto dto)
         {
-            // Nota: tu teams-service podría requerir más campos (coach/city)
             var home = new { name = dto.HomeName };
             var away = new { name = dto.AwayName };
 
@@ -235,10 +267,10 @@ namespace MatchesService.Services
                 {
                     matchId = match.Id,
                     homeScore = match.HomeScore,
-                    awayScore = match.AwayScore,
-                    @event = new { ev.Id, ev.TeamId, ev.PlayerId, ev.Points, ev.DateRegister }
+                    awayScore = match.AwayScore
                 };
 
+                await BroadcastAsync(match.Id, "scoreUpdated", payload);
                 return (true, null, payload);
             }
             catch (DbUpdateException ex)
@@ -257,19 +289,20 @@ namespace MatchesService.Services
                 return (false, "El TeamId no pertenece a este partido", null);
 
             if (dto.Delta == 0)
+            {
+                await BroadcastAsync(id, "scoreUpdated", new { homeScore = match.HomeScore, awayScore = match.AwayScore });
                 return (true, null, new { matchId = id, match.HomeScore, match.AwayScore });
+            }
 
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
                 int remaining = dto.Delta;
                 var now = DateTime.UtcNow;
-                var created = new List<object>();
 
                 while (remaining != 0)
                 {
                     int step = Math.Clamp(remaining, -3, 3);
-
                     if (dto.TeamId == match.HomeTeamId)
                         match.HomeScore = Math.Max(0, match.HomeScore + step);
                     else
@@ -285,8 +318,6 @@ namespace MatchesService.Services
                         DateRegister = now
                     };
                     await _repo.AddScoreEventAsync(ev);
-                    created.Add(new { ev.TeamId, ev.Points, ev.DateRegister, ev.Note });
-
                     remaining -= step;
                 }
 
@@ -294,14 +325,8 @@ namespace MatchesService.Services
                 await _repo.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                var payload = new
-                {
-                    matchId = match.Id,
-                    homeScore = match.HomeScore,
-                    awayScore = match.AwayScore,
-                    adjustments = created
-                };
-
+                var payload = new { matchId = match.Id, homeScore = match.HomeScore, awayScore = match.AwayScore };
+                await BroadcastAsync(match.Id, "scoreUpdated", payload);
                 return (true, null, payload);
             }
             catch (DbUpdateException ex)
@@ -339,14 +364,15 @@ namespace MatchesService.Services
                 var homeFouls = await _repo.GetFoulCountAsync(match.Id, match.HomeTeamId);
                 var awayFouls = await _repo.GetFoulCountAsync(match.Id, match.AwayTeamId);
 
-                var payload = new
+                var payload = new { homeFouls, awayFouls };
+                await BroadcastAsync(match.Id, "foulsUpdated", payload);
+
+                return (true, null, new
                 {
                     matchId = match.Id,
                     foul = new { foul.Id, foul.TeamId, foul.PlayerId, foul.Type, foul.DateRegister },
                     totals = new { homeTeamId = match.HomeTeamId, homeFouls, awayTeamId = match.AwayTeamId, awayFouls }
-                };
-
-                return (true, null, payload);
+                });
             }
             catch (DbUpdateException ex)
             {
@@ -367,15 +393,14 @@ namespace MatchesService.Services
             {
                 var homeF = await _repo.GetFoulCountAsync(match.Id, match.HomeTeamId);
                 var awayF = await _repo.GetFoulCountAsync(match.Id, match.AwayTeamId);
-                return (true, null, new { matchId = match.Id, totals = new { homeFouls = homeF, awayFouls = awayF } });
+                var snap = new { homeFouls = homeF, awayFouls = awayF };
+                await BroadcastAsync(match.Id, "foulsUpdated", snap);
+                return (true, null, new { matchId = match.Id, totals = snap });
             }
 
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                var created = 0;
-                var removed = 0;
-
                 if (dto.Delta > 0)
                 {
                     var now = DateTime.UtcNow;
@@ -390,12 +415,11 @@ namespace MatchesService.Services
                             DateRegister = now
                         };
                         await _repo.AddFoulAsync(foul);
-                        created++;
                     }
                 }
-                else // dto.Delta < 0
+                else
                 {
-                    removed = await _repo.RemoveLastFoulsAsync(match.Id, dto.TeamId, Math.Abs(dto.Delta));
+                    await _repo.RemoveLastFoulsAsync(match.Id, dto.TeamId, Math.Abs(dto.Delta));
                 }
 
                 await _repo.SaveChangesAsync();
@@ -404,16 +428,15 @@ namespace MatchesService.Services
                 var homeFouls = await _repo.GetFoulCountAsync(match.Id, match.HomeTeamId);
                 var awayFouls = await _repo.GetFoulCountAsync(match.Id, match.AwayTeamId);
 
-                var payload = new
+                var payload = new { homeFouls, awayFouls };
+                await BroadcastAsync(match.Id, "foulsUpdated", payload);
+
+                return (true, null, new
                 {
                     matchId = match.Id,
                     teamId = dto.TeamId,
-                    created,
-                    removed,
                     totals = new { homeTeamId = match.HomeTeamId, homeFouls, awayTeamId = match.AwayTeamId, awayFouls }
-                };
-
-                return (true, null, payload);
+                });
             }
             catch (DbUpdateException ex)
             {
@@ -423,30 +446,216 @@ namespace MatchesService.Services
         }
 
         // ==================== TIMER / PERIODOS / FIN ====================
-        public Task<(bool Success, string? Error, object? Data)> StartTimerAsync(int id, StartTimerDto? dto)
-            => Task.FromResult<(bool, string?, object?)>((true, null, null));
+        public async Task<(bool Success, string? Error, object? Data)> StartTimerAsync(int id, StartTimerDto? dto)
+        {
+            var match = await _repo.GetByIdAsync(id);
+            if (match is null) return (false, "Partido no encontrado", null);
 
-        public Task<(bool Success, string? Error, object? Data)> PauseTimerAsync(int id)
-            => Task.FromResult<(bool, string?, object?)>((true, null, null));
+            int seconds = 0;
 
-        public Task<(bool Success, string? Error, object? Data)> ResumeTimerAsync(int id)
-            => Task.FromResult<(bool, string?, object?)>((true, null, null));
+            // Evita conversiones implícitas de int? → int
+            if (dto is not null)
+            {
+                var q = dto.QuarterDurationSeconds;
+                if (q.HasValue && q.Value > 0)
+                {
+                    seconds = q.Value;
+                }
+                else
+                {
+                    var s = dto.Seconds;
+                    if (s.HasValue && s.Value > 0)
+                        seconds = s.Value;
+                }
+            }
 
-        public Task<(bool Success, string? Error, object? Data)> ResetTimerAsync(int id)
-            => Task.FromResult<(bool, string?, object?)>((true, null, null));
+            if (seconds <= 0)
+                seconds = match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 600;
 
-        public Task<(bool Success, string? Error, object? Data, object? GameEnded)> AdvanceQuarterAsync(int id)
-            => Task.FromResult<(bool, string?, object?, object?)>((true, null, null, null));
+            match.Status = "Live";
+            if (match.QuarterDurationSeconds <= 0)
+                match.QuarterDurationSeconds = seconds;
+
+            await _repo.UpdateAsync(match);
+            await _repo.SaveChangesAsync();
+
+            _timers[id] = new TimerState
+            {
+                Running = true,
+                StartedAtUtc = DateTime.UtcNow,
+                RemainingSecondsAtStart = seconds
+            };
+
+            await BroadcastAsync(id, "timerStarted", new
+            {
+                quarterEndsAtUtc = DateTime.UtcNow.AddSeconds(seconds).ToString("o"),
+                remainingSeconds = seconds
+            });
+
+            return (true, null, new
+            {
+                id = match.Id,
+                status = match.Status,
+                quarter = match.Period,
+                homeScore = match.HomeScore,
+                awayScore = match.AwayScore,
+                timerRunning = true,
+                timeRemaining = seconds,
+                remainingSeconds = seconds
+            });
+        }
+
+
+        public async Task<(bool Success, string? Error, object? Data)> PauseTimerAsync(int id)
+        {
+            var match = await _repo.GetByIdAsync(id);
+            if (match is null) return (false, "Partido no encontrado", null);
+
+            int secondsDefault = match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 600;
+
+            var state = _timers.GetOrAdd(id, _ => new TimerState
+            {
+                Running = false,
+                StartedAtUtc = DateTime.UtcNow,
+                RemainingSecondsAtStart = secondsDefault
+            });
+
+            var remaining = CalcRemainingSeconds(state);
+            state.Running = false;
+            state.RemainingSecondsAtStart = remaining;
+            state.StartedAtUtc = DateTime.UtcNow;
+
+            await BroadcastAsync(id, "timerPaused", new { remainingSeconds = remaining });
+
+            return (true, null, new
+            {
+                id = match.Id,
+                status = match.Status,
+                quarter = match.Period,
+                homeScore = match.HomeScore,
+                awayScore = match.AwayScore,
+                timerRunning = false,
+                timeRemaining = remaining,
+                remainingSeconds = remaining
+            });
+        }
+
+        public async Task<(bool Success, string? Error, object? Data)> ResumeTimerAsync(int id)
+        {
+            var match = await _repo.GetByIdAsync(id);
+            if (match is null) return (false, "Partido no encontrado", null);
+
+            int defaultSeconds = match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 600;
+
+            var state = _timers.AddOrUpdate(
+                id,
+                _ => new TimerState
+                {
+                    Running = true,
+                    StartedAtUtc = DateTime.UtcNow,
+                    RemainingSecondsAtStart = defaultSeconds
+                },
+                (_, s) =>
+                {
+                    var remaining = CalcRemainingSeconds(s);
+                    s.Running = true;
+                    s.StartedAtUtc = DateTime.UtcNow;
+                    s.RemainingSecondsAtStart = remaining <= 0 ? defaultSeconds : remaining;
+                    return s;
+                });
+
+            var nowRemaining = CalcRemainingSeconds(state);
+
+            await BroadcastAsync(id, "timerResumed", new
+            {
+                quarterEndsAtUtc = DateTime.UtcNow.AddSeconds(nowRemaining).ToString("o"),
+                remainingSeconds = nowRemaining
+            });
+
+            return (true, null, new
+            {
+                id = match.Id,
+                status = match.Status,
+                quarter = match.Period,
+                homeScore = match.HomeScore,
+                awayScore = match.AwayScore,
+                timerRunning = true,
+                timeRemaining = nowRemaining,
+                remainingSeconds = nowRemaining
+            });
+        }
+
+        public async Task<(bool Success, string? Error, object? Data)> ResetTimerAsync(int id)
+        {
+            var match = await _repo.GetByIdAsync(id);
+            if (match is null) return (false, "Partido no encontrado", null);
+
+            int seconds = match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 600;
+
+            _timers[id] = new TimerState
+            {
+                Running = false,
+                StartedAtUtc = DateTime.UtcNow,
+                RemainingSecondsAtStart = seconds
+            };
+
+            await BroadcastAsync(id, "timerReset", new { remainingSeconds = seconds });
+
+            return (true, null, new
+            {
+                id = match.Id,
+                status = match.Status,
+                quarter = match.Period,
+                homeScore = match.HomeScore,
+                awayScore = match.AwayScore,
+                timerRunning = false,
+                timeRemaining = seconds,
+                remainingSeconds = seconds
+            });
+        }
+
+        public async Task<(bool Success, string? Error, object? Data, object? GameEnded)> AdvanceQuarterAsync(int id)
+        {
+            var match = await _repo.GetByIdAsync(id);
+            if (match is null) return (false, "Partido no encontrado", null, null);
+
+            if (match.Period < 4) match.Period++;
+            await _repo.UpdateAsync(match);
+            await _repo.SaveChangesAsync();
+
+            int seconds = match.QuarterDurationSeconds > 0 ? match.QuarterDurationSeconds : 600;
+            _timers[id] = new TimerState
+            {
+                Running = false,
+                StartedAtUtc = DateTime.UtcNow,
+                RemainingSecondsAtStart = seconds
+            };
+
+            await BroadcastAsync(id, "buzzer", new { });
+            await BroadcastAsync(id, "quarterChanged", new { quarter = match.Period });
+            await BroadcastAsync(id, "timerReset", new { remainingSeconds = seconds });
+
+            var payload = new
+            {
+                id = match.Id,
+                status = match.Status,
+                quarter = match.Period,
+                homeScore = match.HomeScore,
+                awayScore = match.AwayScore,
+                timerRunning = false,
+                timeRemaining = seconds
+            };
+
+            return (true, null, payload, null);
+        }
 
         public Task<(bool Success, string? Error, object? Data, object? GameEnded)> AutoAdvanceQuarterAsync(int id)
-            => Task.FromResult<(bool, string?, object?, object?)>((true, null, null, null));
+            => AdvanceQuarterAsync(id);
 
         public async Task<(bool Success, string? Error, object? Data, object? GameEnded)> FinishAsync(int id, FinishMatchDto dto)
         {
-            // Cargar el partido
             var match = await _repo.GetByIdAsync(id);
-            if (match is null)
-                return (false, "Partido no encontrado", null, null);
+            if (match is null) return (false, "Partido no encontrado", null, null);
 
             if (match.Status is "Finished" or "Canceled" or "Suspended")
                 return (false, $"No se puede finalizar un partido en estado '{match.Status}'", null, null);
@@ -457,7 +666,6 @@ namespace MatchesService.Services
             await using var tx = await _db.Database.BeginTransactionAsync();
             try
             {
-                // (Opcional) Registrar eventos finales enviados en el body
                 if (dto.ScoreEvents is not null)
                 {
                     foreach (var ev in dto.ScoreEvents)
@@ -475,7 +683,6 @@ namespace MatchesService.Services
                     }
                 }
 
-                // (Opcional) Registrar faltas finales enviadas en el body
                 if (dto.Fouls is not null)
                 {
                     foreach (var f in dto.Fouls)
@@ -493,7 +700,6 @@ namespace MatchesService.Services
                     }
                 }
 
-                // Actualizar marcadores y estado
                 match.HomeScore = dto.HomeScore;
                 match.AwayScore = dto.AwayScore;
                 match.Status = "Finished";
@@ -501,7 +707,6 @@ namespace MatchesService.Services
                 await _repo.UpdateAsync(match);
                 await _repo.SaveChangesAsync();
 
-                // Ganador (o empate)
                 int? winnerTeamId = null;
                 if (match.HomeScore > match.AwayScore) winnerTeamId = match.HomeTeamId;
                 else if (match.AwayScore > match.HomeScore) winnerTeamId = match.AwayTeamId;
@@ -528,7 +733,12 @@ namespace MatchesService.Services
                     winnerTeamId = winnerTeamId
                 };
 
-                // Para enviar al Hub y como respuesta HTTP
+                var winner =
+                    match.HomeScore == match.AwayScore ? "draw" :
+                    (match.HomeScore > match.AwayScore ? "home" : "away");
+
+                await BroadcastAsync(match.Id, "gameEnded", new { home = match.HomeScore, away = match.AwayScore, winner });
+
                 return (true, null, payload, payload);
             }
             catch (Exception ex)
@@ -538,7 +748,6 @@ namespace MatchesService.Services
             }
         }
 
-
         public Task<(bool Success, string? Error, object? Data)> CancelAsync(int id)
             => Task.FromResult<(bool, string?, object?)>((true, null, null));
 
@@ -546,7 +755,6 @@ namespace MatchesService.Services
             => Task.FromResult<(bool, string?, object?)>((true, null, null));
     }
 
-    // DTO simple para leer respuesta de creación de equipo (id, name, etc.).
     public class TeamResponse
     {
         public int Id { get; set; }

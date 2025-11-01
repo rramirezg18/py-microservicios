@@ -1,0 +1,82 @@
+HTTP/1.1 200 OK
+Server: nginx/1.29.3
+Date: Sat, 01 Nov 2025 00:43:37 GMT
+Content-Type: application/pdf
+Transfer-Encoding: chunked
+Connection: keep-alive
+content-disposition: attachment; filename="roster_1.pdf"
+
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document http://www.reportlab.com
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 8 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 7 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/PageMode /UseNone /Pages 7 0 R /Type /Catalog
+>>
+endobj
+6 0 obj
+<<
+/Author (report-service) /CreationDate (D:20251101004337+00'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20251101004337+00'00') /Producer (ReportLab PDF Library - www.reportlab.com) 
+  /Subject (\(unspecified\)) /Title (Reportes) /Trapped /False
+>>
+endobj
+7 0 obj
+<<
+/Count 1 /Kids [ 4 0 R ] /Type /Pages
+>>
+endobj
+8 0 obj
+<<
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 567
+>>
+stream
+Gb"/"_+s#E&A@6W7cI=-0V7geEK5q[8-l=)jN&Xo^_YWnUd^+<HH&Mp>U_tCf0rG<g$d2\^!$n:QA*TPh%JX*LSIcN,foET=Y\tRE0;Tp$$K"3.S[npUlL[`%OFkXh8&\N+rRU\.cF#l8:WlL,RWe_C1VfcK'+qW>ZL)a=i7=G^pL%!o2u6D\.AB[j9KY69,8h?ZA-j_pM,Ehke84,)ui+CSQu1DlDO;UdC9=GEccrV37A#BIraL?JrBg*W//(uLE>^nmLLRO=<0h*#:N2"2,C9cOfBA"e.jJ(,Jm,h/-D<uCU+aZLhQ"R@]S=N2I.#8ANe6`OeeDnSm/>[RsDC[At'3oiQQ5n^L*;9AUX4:ToAbd,spp/@s/\oP6FHm&1aMSlr`F(`<rJ$`aW6Q*AJcjj,g6uR%B;IE3(f]e'Wsr>3LQZGom^]Tma)hUe2D/[tS.;e5:As\8D9eTBi%XrP=C/_eGo$,!^<'J>Cq<&`WX]+%ND:irSR,4`$X+%0sE#FR\C*pH/EN!'7[ShZiSW=PQoW02/%`r6GNF9]1C]JMs9:![2go_lBZP~>endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000073 00000 n 
+0000000114 00000 n 
+0000000221 00000 n 
+0000000333 00000 n 
+0000000536 00000 n 
+0000000604 00000 n 
+0000000883 00000 n 
+0000000942 00000 n 
+trailer
+<<
+/ID 
+[<f48a7f7dc7074d7272e7800d90df930d><f48a7f7dc7074d7272e7800d90df930d>]
+% ReportLab generated PDF document -- digest (http://www.reportlab.com)
+
+/Info 6 0 R
+/Root 5 0 R
+/Size 9
+>>
+startxref
+1599
+%%EOF

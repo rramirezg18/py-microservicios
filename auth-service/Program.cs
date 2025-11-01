@@ -4,9 +4,8 @@ using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using AspNet.Security.OAuth.GitHub;
-using Microsoft.AspNetCore.Http; // SameSiteMode
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Security.Claims;
 
 using AuthService.Data;
 using AuthService.Repositories.Interfaces;
@@ -16,45 +15,55 @@ using AuthService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// === CONFIGURACIÓN DE DESARROLLO ===
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// === SERVICIOS PRINCIPALES ===
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// === SWAGGER con autenticación JWT ===
 builder.Services.AddSwaggerGen(c =>
 {
     var jwtScheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Ingrese el token JWT como: Bearer {token}",
+        Description = "Bearer {token}",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        Reference = new OpenApiReference
-        {
-            Type = ReferenceType.SecurityScheme,
-            Id = "Bearer"
-        }
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
     };
     c.AddSecurityDefinition("Bearer", jwtScheme);
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        { jwtScheme, Array.Empty<string>() }
-    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement { { jwtScheme, Array.Empty<string>() } });
 });
 
-// === BASE DE DATOS (SQL Server) ===
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// === AUTENTICACIÓN JWT + OAuth (GitHub) ===
+var issuer = builder.Configuration["Jwt:Issuer"] ?? "auth-service";
+var audience = builder.Configuration["Jwt:Audience"] ?? "py-microservices";
+var keyRaw = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing (HS256 secret)");
+if (Encoding.UTF8.GetBytes(keyRaw).Length < 32)
+    throw new InvalidOperationException("Jwt:Key debe tener al menos 32 bytes (256 bits).");
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyRaw));
+var tvp = new TokenValidationParameters
+{
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+    ValidateIssuerSigningKey = true,
+    ValidIssuer = issuer,
+    ValidAudience = audience,
+    IssuerSigningKey = signingKey,
+    ClockSkew = TimeSpan.Zero,
+    RoleClaimType = "role",
+    NameClaimType = ClaimTypes.NameIdentifier
+};
+builder.Services.AddSingleton(tvp);
+
 builder.Services
     .AddAuthentication(options =>
     {
@@ -63,21 +72,8 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
-        var key = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
-        if (Encoding.UTF8.GetBytes(key).Length < 32)
-            throw new InvalidOperationException("Jwt:Key debe tener al menos 32 bytes (256 bits).");
-
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-            ClockSkew = TimeSpan.Zero
-        };
+        options.TokenValidationParameters = tvp;
+        options.RequireHttpsMetadata = false;
     })
     .AddCookie("External", cookie =>
     {
@@ -97,67 +93,61 @@ builder.Services
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     });
 
-// === AUTORIZACIÓN ===
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin",   p => p.RequireRole("Admin"));
+    options.AddPolicy("Control", p => p.RequireRole("Control"));
+});
 
-// === CORS (Frontend Angular) ===
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("frontend", p =>
-        p.WithOrigins(
-            "http://localhost:4200",
-            "http://127.0.0.1:4200",
-            "http://localhost",
-            "http://127.0.0.1"
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod()
-        .AllowCredentials()
-    );
+        p.WithOrigins("http://localhost", "http://127.0.0.1", "http://localhost:4200", "http://127.0.0.1:4200")
+         .AllowAnyHeader()
+         .AllowAnyMethod()
+         .AllowCredentials());
 });
 
-// === DEPENDENCY INJECTION ===
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedFor;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IMenuRepository, MenuRepository>();
-
 builder.Services.AddScoped<IAuthService, AuthService.Services.AuthService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 
 var app = builder.Build();
 
-// === MIGRACIÓN AUTOMÁTICA ===
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
     try
     {
-        var context = services.GetRequiredService<AppDbContext>();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
     }
     catch (Exception ex)
     {
-        var logger = services.GetRequiredService<ILogger<Program>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Error al aplicar migraciones de la base de datos.");
     }
 }
 
-// === PIPELINE ===
+app.UseForwardedHeaders(); // 👈 ahora lo primero del pipeline
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-// Mantén HTTP en desarrollo
-// app.UseHttpsRedirection();
-
-app.UseCookiePolicy(new CookiePolicyOptions
-{
-    MinimumSameSitePolicy = SameSiteMode.Lax
-});
-
+app.UseCookiePolicy(new CookiePolicyOptions { MinimumSameSitePolicy = SameSiteMode.Lax });
 app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
@@ -166,5 +156,4 @@ app.MapControllers();
 
 app.Run();
 
-// === Clase parcial para pruebas ===
 public partial class Program { }

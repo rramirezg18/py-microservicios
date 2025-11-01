@@ -6,7 +6,6 @@ import Swal from 'sweetalert2';
 // Servicios API
 import { ApiService } from '../../services/api/api.service';
 import { RealtimeService } from '@app/services/realtime.service';
-
 import { AuthenticationService } from '@app/services/api/authentication.service';
 
 // Componentes compartidos
@@ -67,26 +66,48 @@ export class ScoreboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnInit(): void {
-    const id = this.matchId();
-
+  private hydrateOnce(id: number) {
     this.api.getMatch(id).subscribe({
       next: (m: any) => {
-        this.realtime.score.set({ home: m.homeScore, away: m.awayScore });
-        this.homeName = m.homeTeam ?? 'HOME';
-        this.awayName = m.awayTeam ?? 'AWAY';
+        // Nombres
+        this.homeName = m?.homeTeam?.name ?? m?.homeTeamName ?? 'HOME';
+        this.awayName = m?.awayTeam?.name ?? m?.awayTeamName ?? 'AWAY';
+
+        // Marcador y periodo
+        if (typeof m.homeScore === 'number' && typeof m.awayScore === 'number') {
+          this.realtime.score.set({ home: m.homeScore, away: m.awayScore });
+        }
+        if (typeof m.period === 'number') this.realtime.quarter.set(m.period);
         if (typeof m.quarter === 'number') this.realtime.quarter.set(m.quarter);
-        this.realtime.hydrateTimerFromSnapshot(m.timer);
-        if (m?.fouls) {
-          const fouls = m.fouls ?? { home: m.homeFouls ?? 0, away: m.awayFouls ?? 0 };
+
+        // Timer snapshot (evita carrera del 1er cuarto)
+        if (m?.timer) this.realtime.hydrateTimerFromSnapshot(m.timer);
+
+        // Faltas
+        const fouls = m?.fouls ?? {
+          home: m?.homeFouls ?? 0,
+          away: m?.awayFouls ?? 0
+        };
+        if (typeof fouls?.home === 'number' && typeof fouls?.away === 'number') {
           this.realtime.hydrateFoulsFromSnapshot(fouls);
         }
       },
       error: (err) => console.error('Error cargando match', err)
     });
+  }
 
+  ngOnInit(): void {
+    const id = this.matchId();
+
+    // 1) Primer hidratado (por si el hub tarda)
+    this.hydrateOnce(id);
+
+    // 2) Conexión al Hub y rehidratado inmediatamente después
     if (isPlatformBrowser(this.platformId)) {
-      this.realtime.connect(id).catch((err) => console.error('Error al conectar realtime', err));
+      this.realtime
+        .connect(id)
+        .then(() => this.hydrateOnce(id)) // <<--- REHIDRATA tras unirte al grupo
+        .catch((err) => console.error('Error al conectar realtime', err));
     }
   }
 

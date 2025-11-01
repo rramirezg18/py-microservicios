@@ -1,74 +1,162 @@
-<div class="p-6 max-w-4xl mx-auto space-y-6">
-  <h1 class="text-2xl font-bold">Reportes & Estadísticas</h1>
-
-  <p *ngIf="errorMsg()" class="text-red-600">{{ errorMsg() }}</p>
-
-  <!-- Tabla de Posiciones -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Tabla de Posiciones</h2>
-    <button class="btn" (click)="downloadStandings()">Descargar standings.pdf</button>
+﻿<div class="reports-root">
+  <!-- Hero -->
+  <section class="reports-hero">
+    <h1>REPORTES Y ESTADÍSTICAS</h1>
+    <p>Consulta información consolidada de equipos, jugadores y encuentros.</p>
   </section>
 
-  <!-- Estadísticas (resumen) -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Estadística</h2>
-    <button class="btn" (click)="downloadStatsSummary()">Descargar Estadísticas.pdf</button>
-  </section>
+  <p *ngIf="errorMsg()" class="alert">{{ errorMsg() }}</p>
 
-  <!-- Todos los Jugadores -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Jugadores Registrados</h2>
-    <button class="btn" (click)="downloadAllPlayers()">Descargar players_all.pdf</button>
-  </section>
-
-  <!-- Equipos -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Equipos Registrados</h2>
-    <button class="btn" (click)="downloadTeams()">Descargar equipos.pdf</button>
-  </section>
-
-  <!-- Jugadores por Equipo -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Jugadores por Equipo</h2>
-
-    <div class="flex gap-2 items-center">
-      <label>Equipo:</label>
-      <select [disabled]="loadingTeams()" [(ngModel)]="teamId">
-        <option [ngValue]="null" disabled>-- selecciona --</option>
-        <option *ngFor="let t of teams()" [ngValue]="t.id">{{ t.name }}</option>
-      </select>
-
-      <button class="btn" (click)="downloadPlayersByTeam()">Descargar players.pdf</button>
+  <!-- TABLA DE POSICIONES -->
+  <section class="report-card">
+    <div class="card-head">
+      <h2>TABLA DE POSICIONES</h2>
+      <div class="actions">
+        <button class="btn" (click)="viewStandings()">Ver tabla</button>
+        <button class="btn btn--accent" (click)="downloadStandings()">Descargar standings.pdf</button>
+      </div>
     </div>
 
-    <small *ngIf="loadingTeams()">Cargando equipos…</small>
+    <!-- Tabla inline -->
+    <div *ngIf="loadingStandings()" class="state">Cargando posiciones…</div>
+    <ng-container *ngIf="!loadingStandings()">
+      <div class="table-wrapper" *ngIf="standingsRows().length; else standingsEmpty">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Equipo</th>
+              <th>PJ</th>
+              <th>PG</th>
+              <th>PP</th>
+              <th>PF</th>
+              <th>PC</th>
+              <th>DIF</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of standingsRows(); index as i">
+              <td>{{ r.rank || (i + 1) }}</td>
+              <td>{{ r.team }}</td>
+              <td>{{ r.played }}</td>
+              <td class="positive">{{ r.wins }}</td>
+              <td>{{ r.losses }}</td>
+              <td>{{ r.pf }}</td>
+              <td>{{ r.pa }}</td>
+              <td [class.positive]="r.diff >= 0">{{ r.diff }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #standingsEmpty>
+        <p class="state">No hay datos para mostrar.</p>
+      </ng-template>
+    </ng-container>
   </section>
 
-  <!-- Historial de Partidos -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Historial de Partidos</h2>
+  <!-- ESTADÍSTICA (RESUMEN) -->
+  <section class="report-card dark-surface">
+    <div class="card-head">
+      <h2>ESTADÍSTICA (RESUMEN)</h2>
+      <div class="actions">
+        <button class="btn btn--accent" (click)="downloadStatsSummary()">Descargar estadísticas.pdf</button>
+      </div>
+    </div>
 
-    <div class="flex gap-2 items-center">
+    <div *ngIf="loadingStats()" class="state">Cargando estadísticas…</div>
+
+    <ng-container *ngIf="!loadingStats()">
+      <ng-container *ngIf="stats() as s; else statsEmpty">
+        <div class="grid-four">
+          <article>
+            <header>Top por Victorias</header>
+            <ol>
+              <li *ngFor="let it of s.topWins | slice:0:5">
+                <span class="pos">{{ it.wins }}</span>
+                <span class="name">{{ it.team }}</span>
+                <span class="value">PJ {{ it.played }}</span>
+              </li>
+            </ol>
+          </article>
+
+          <article>
+            <header>Top por Puntos a Favor</header>
+            <ol>
+              <li *ngFor="let it of s.topPF | slice:0:5">
+                <span class="pos">{{ it.pf }}</span>
+                <span class="name">{{ it.team }}</span>
+                <span class="value">PA {{ it.pa }}</span>
+              </li>
+            </ol>
+          </article>
+
+          <article>
+            <header>Menos Puntos a Favor</header>
+            <ol>
+              <li *ngFor="let it of s.minPF | slice:0:5">
+                <span class="pos">{{ it.pf }}</span>
+                <span class="name">{{ it.team }}</span>
+                <span class="value">PJ {{ it.played }}</span>
+              </li>
+            </ol>
+          </article>
+
+          <article>
+            <header>Menos Derrotas</header>
+            <ol>
+              <li *ngFor="let it of s.minLosses | slice:0:5">
+                <span class="pos">{{ it.losses }}</span>
+                <span class="name">{{ it.team }}</span>
+                <span class="value">PG {{ it.wins }}</span>
+              </li>
+            </ol>
+          </article>
+        </div>
+      </ng-container>
+
+      <ng-template #statsEmpty>
+        <p class="state">No hay datos suficientes para estadísticas.</p>
+      </ng-template>
+    </ng-container>
+  </section>
+
+  <!-- DESCARGAS / ROSTER / HISTORIAL / JUGADORES -->
+  <section class="report-card">
+    <div class="card-head">
+      <h2>JUGADORES POR EQUIPO</h2>
+    </div>
+    <div class="form-row">
+      <label>Equipo:</label>
+      <select [disabled]="loadingTeams()" [ngModel]="teamId()" (ngModelChange)="teamId.set($event)">
+        <option [ngValue]="null">-- selecciona --</option>
+        <option *ngFor="let t of teams()" [ngValue]="t.id">{{ t.name }}</option>
+      </select>
+      <button class="btn" (click)="downloadPlayersByTeam()">Descargar players.pdf</button>
+    </div>
+    <small *ngIf="loadingTeams()" class="hint">Cargando equipos…</small>
+  </section>
+
+  <section class="report-card">
+    <div class="card-head">
+      <h2>HISTORIAL DE PARTIDOS</h2>
+    </div>
+    <div class="form-row">
       <label>Desde:</label>
-      <input type="date" [(ngModel)]="from" />
+      <input type="date" [ngModel]="from()" (ngModelChange)="from.set($event)" />
       <label>Hasta:</label>
-      <input type="date" [(ngModel)]="to" />
+      <input type="date" [ngModel]="to()" (ngModelChange)="to.set($event)" />
       <button class="btn" (click)="downloadMatchesHistory()">Descargar history.pdf</button>
     </div>
   </section>
 
-  <!-- Roster por Partido -->
-  <section class="border rounded-xl p-4">
-    <h2 class="font-semibold mb-2">Roster por Partido</h2>
-
-    <div class="flex gap-2 items-center">
+  <section class="report-card">
+    <div class="card-head">
+      <h2>ROSTER POR PARTIDO</h2>
+    </div>
+    <div class="form-row">
       <label>Match ID:</label>
-      <input type="number" [(ngModel)]="matchId" placeholder="e.g. 4" />
+      <input type="number" [ngModel]="matchId()" (ngModelChange)="onMatchIdChange($event)" placeholder="e.g. 4" />
       <button class="btn" (click)="downloadMatchRoster()">Descargar roster.pdf</button>
     </div>
   </section>
 </div>
-
-<style>
-  .btn { padding: .5rem .9rem; border: 1px solid #ddd; border-radius: .5rem; }
-</style>

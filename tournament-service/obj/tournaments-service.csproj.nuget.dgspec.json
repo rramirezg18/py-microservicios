@@ -1,32 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\jcast\\Desktop\\py-microservicios\\tournaments-service\\tournaments-service.csproj": {}
+    "/home/roberto/Escritorio/py-microservicios/tournament-service/tournaments-service.csproj": {}
   },
   "projects": {
-    "C:\\Users\\jcast\\Desktop\\py-microservicios\\tournaments-service\\tournaments-service.csproj": {
+    "/home/roberto/Escritorio/py-microservicios/tournament-service/tournaments-service.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\jcast\\Desktop\\py-microservicios\\tournaments-service\\tournaments-service.csproj",
-        "projectName": "tournaments-service",
-        "projectPath": "C:\\Users\\jcast\\Desktop\\py-microservicios\\tournaments-service\\tournaments-service.csproj",
-        "packagesPath": "C:\\Users\\jcast\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\jcast\\Desktop\\py-microservicios\\tournaments-service\\obj\\",
+        "projectUniqueName": "/home/roberto/Escritorio/py-microservicios/tournament-service/tournaments-service.csproj",
+        "projectName": "TournametsService",
+        "projectPath": "/home/roberto/Escritorio/py-microservicios/tournament-service/tournaments-service.csproj",
+        "packagesPath": "/home/roberto/.nuget/packages/",
+        "outputPath": "/home/roberto/Escritorio/py-microservicios/tournament-service/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\jcast\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/home/roberto/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -39,18 +32,31 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.300"
+        }
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.7, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.7, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
+              "target": "Package",
+              "version": "[8.0.7, )"
+            },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.7, )"
+            },
             "Swashbuckle.AspNetCore": {
               "target": "Package",
               "version": "[6.4.0, )"
@@ -75,7 +81,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.303/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.121/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

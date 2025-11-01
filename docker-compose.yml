@@ -1,4 +1,7 @@
 services:
+  # ===========================
+  # SQL Server (Auth + Matches + Tournaments)
+  # ===========================
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
@@ -15,13 +18,20 @@ services:
       retries: 60
       start_period: 40s
 
+  # ===========================
+  # Auth-Service (.NET)
+  # ===========================
   api:
     build:
       context: ./auth-service
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=authDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;"
       ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=authDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;Encrypt=False;MultipleActiveResultSets=true"
+      Jwt__Issuer: "auth-service"
+      Jwt__Audience: "py-microservices"
+      Jwt__Key: "CHANGE_ME_SUPER_SECRET_32B_MIN_2025_ABCDEF"
+      Frontend__OAuthRedirect: "http://localhost/oauth/callback"
     depends_on:
       db:
         condition: service_healthy
@@ -31,7 +41,9 @@ services:
     volumes:
       - /home/roberto/.microsoft/usersecrets:/root/.microsoft/usersecrets
 
-  # Frontend (Nginx) 
+  # ===========================
+  # Frontend (Nginx)
+  # ===========================
   web:
     build:
       context: ./frontend
@@ -44,12 +56,16 @@ services:
         condition: service_started
       players-service:
         condition: service_started
-      report-service:           
+      report-service:
+        condition: service_started
+      tournament-service:
         condition: service_started
     ports:
       - "80:80"
 
-  # Postgres para teams-service
+  # ===========================
+  # Postgres (Teams)
+  # ===========================
   teams-db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -80,16 +96,27 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://teams-db:5432/teamsBD
       SPRING_DATASOURCE_USERNAME: jonathan
       SPRING_DATASOURCE_PASSWORD: Pollito123
-      players.service.base-url: http://players-service:3000/api
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: "true"
       SPRING_SQL_INIT_MODE: always
       SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info"
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      SECURITY_JWT_SECRET: "CHANGE_ME_SUPER_SECRET_32B_MIN_2025_ABCDEF"
+      PLAYERS_SERVICE_BASE_URL: "http://players-service:3000/api"
     ports:
       - "8082:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
     restart: unless-stopped
 
-  # MySQL para players-service
+  # ===========================
+  # MySQL (Players)
+  # ===========================
   players-db:
     image: mysql:8.0
     environment:
@@ -107,6 +134,9 @@ services:
       timeout: 3s
       retries: 60
 
+  # ===========================
+  # Players-Service (Node)
+  # ===========================
   players-service:
     build:
       context: ./players-service
@@ -118,12 +148,18 @@ services:
       DB_USER: jonathan
       DB_PASSWORD: Perrito123
       DB_NAME: playersDb
-      PORT: 3000
+      PORT: "3000"
+      HOST: "0.0.0.0"
+      JWT_AUDIENCE: "py-microservices"
+      JWT_ISSUER: "auth-service"
+      AUTH_HS256_SECRET: "CHANGE_ME_SUPER_SECRET_32B_MIN_2025_ABCDEF"
     ports:
       - "3000:3000"
     restart: unless-stopped
 
-  # Matches (.NET 8 + SQL Server)
+  # ===========================
+  # Matches-Service (.NET)
+  # ===========================
   matches-service:
     build:
       context: ./matches-service
@@ -131,47 +167,144 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:8081"
       ASPNETCORE_ENVIRONMENT: "Development"
-      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=matchesDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;MultipleActiveResultSets=true"
-      # 🔧 Base URL del teams-service (termina en /api/teams)
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=matchesDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;Encrypt=False;MultipleActiveResultSets=true"
       TeamsService__BaseUrl: "http://teams-service:8082/api/teams"
+      Jwt__Issuer: "auth-service"
+      Jwt__Audience: "py-microservices"
+      Jwt__Key: "CHANGE_ME_SUPER_SECRET_32B_MIN_2025_ABCDEF"
     depends_on:
       db:
         condition: service_healthy
       teams-service:
         condition: service_started
     ports:
-      - "5002:8081"   # Swagger/Health locales: http://localhost:5002
+      - "5002:8081"
     restart: unless-stopped
 
-  # Redis para report-service
-  redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+  # ===========================
+  # Tournament-Service (.NET + EF SQL Server)
+  # ===========================
+  tournament-service:
+    build:
+      context: ./tournament-service
+    depends_on:
+      db:
+        condition: service_healthy
+      teams-service:
+        condition: service_started
+      matches-service:
+        condition: service_started
+    environment:
+      ASPNETCORE_URLS: "http://+:8083"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__DefaultConnection: "Server=db,1433;Database=tournamentsDb;User Id=sa;Password=Spider12man3;TrustServerCertificate=true;Encrypt=False;MultipleActiveResultSets=true"
+      ServiceUrls__TeamsService: "http://teams-service:8082"
+      TEAMS_SERVICE_BASE_URL: "http://teams-service:8082"
+      MATCHES_SERVICE_BASE_URL: "http://matches-service:8081"
+      Jwt__Issuer: "auth-service"
+      Jwt__Audience: "py-microservices"
+      Jwt__Key: "CHANGE_ME_SUPER_SECRET_32B_MIN_2025_ABCDEF"
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+
+  # ===========================
+  # MongoDB
+  # ===========================
+  mongo:
+    image: mongo:6
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: reports
+    ports:
+      - "27017:27017"
     volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 2s
-      retries: 20
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express:1.0.2-20
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      mongo:
+        condition: service_started
+    ports:
+      - "8086:8081"
+
+  # ===========================
+  # ETL (microservicios -> Mongo)
+  # ===========================
+  etl-service:
+    build:
+      context: ./etl-service
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+      REPORTS_DB: "reports"
+      TEAMS_API_BASE:   "http://teams-service:8082"
+      PLAYERS_API_BASE: "http://players-service:3000"
+      MATCHES_API_BASE: "http://matches-service:8081"
+      TEAMS_API_TOKEN:   "${DOWNSTREAM_JWT:-}"
+      PLAYERS_API_TOKEN: "${DOWNSTREAM_JWT:-}"
+      MATCHES_API_TOKEN: ""
+      PAGE_SIZE: "200"
+      MAX_AUTOPAGES: "20"
+      ETL_INTERVAL_SECONDS: "120"
+      RUN_ONCE: "0"
+    depends_on:
+      teams-service:
+        condition: service_started
+      players-service:
+        condition: service_started
+      matches-service:
+        condition: service_started
+      mongo:
+        condition: service_started
     restart: unless-stopped
 
-  # report-service (FastAPI) 
+  # ===========================
+  # Report-Service (FastAPI + PDFs)
+  # ===========================
   report-service:
     build:
       context: ./report-service
       dockerfile: docker/Dockerfile
     env_file:
       - ./report-service/.env
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+      REPORTS_DB: "reports"
+      READ_FROM_CACHE: "true"
+      TEAMS_API_BASE:   "http://teams-service:8082"
+      PLAYERS_API_BASE: "http://players-service:3000"
+      MATCHES_API_BASE: "http://matches-service:8081"
+      TEAMS_API_TOKEN:   "${DOWNSTREAM_JWT:-}"
+      PLAYERS_API_TOKEN: "${DOWNSTREAM_JWT:-}"
+      MATCHES_API_TOKEN: ""
+      SERVICE_PORT: "8080"
     depends_on:
-      redis:
-        condition: service_healthy
+      mongo:
+        condition: service_started
+      teams-service:
+        condition: service_started
+      players-service:
+        condition: service_started
+      matches-service:
+        condition: service_started
     ports:
-      - "8084:8080"        # Health: http://localhost:8084/health
+      - "8084:8080"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health | grep -q '\"status\": \"ok\"'"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
 
 volumes:
   mssqldata:
   teams_pgdata:
   players_data:
-  redis_data:
+  mongo_data:

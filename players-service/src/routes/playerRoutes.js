@@ -1,18 +1,18 @@
 // src/routes/playerRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const playerController = require('../controllers/playerController');
 const { validateCreatePlayer, validateUpdatePlayer } = require('../middlewares/validationMiddleware');
+const { requireAuth, requireRole, requireAnyRole } = require('../middlewares/auth');
 
-// --- Rutas para Players ---
-router.get('/players', playerController.getAllPlayers);
-router.get('/players/:id', playerController.getPlayerById);
-router.post('/players', validateCreatePlayer, playerController.createPlayer);
-router.put('/players/:id', validateUpdatePlayer, playerController.updatePlayer);
-router.delete('/players/:id', playerController.deletePlayer);
+// Lecturas: Admin o Control
+router.get('/players',            requireAnyRole('Admin','Control'), playerController.getAllPlayers);
+router.get('/players/:id',        requireAnyRole('Admin','Control'), playerController.getPlayerById);
+router.get('/players/team/:teamId', requireAnyRole('Admin','Control'), playerController.getPlayersByTeam);
 
-// --- Ruta para obtener jugadores de un equipo ---
-router.get('/teams/:teamId/players', playerController.getPlayersByTeam);
+// Escrituras: solo Admin
+router.post('/players',           requireAuth, requireRole('Admin'), validateCreatePlayer, playerController.createPlayer);
+router.put('/players/:id',        requireAuth, requireRole('Admin'), validateUpdatePlayer, playerController.updatePlayer);
+router.delete('/players/:id',     requireAuth, requireRole('Admin'), playerController.deletePlayer);
 
 module.exports = router;

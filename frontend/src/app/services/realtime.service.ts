@@ -147,9 +147,14 @@ export class RealtimeService {
     if (this.hub) return;
 
     this.hub = new signalR.HubConnectionBuilder()
-      .withUrl(`/hubs/score?matchId=${matchId}`)
-      .withAutomaticReconnect()
+      .withUrl(`/hub/matches?matchId=${matchId}`)
+      .configureLogging(signalR.LogLevel.Information)
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .build();
+
+    this.hub.onreconnecting(err => console.warn('[SignalR] reconnecting', err));
+    this.hub.onreconnected(id => console.log('[SignalR] reconnected', id));
+    this.hub.onclose(err => console.warn('[SignalR] closed', err));
 
     // Score
     this.hub.on('scoreUpdated', (s: { homeScore: number; awayScore: number }) => {
@@ -157,16 +162,13 @@ export class RealtimeService {
     });
 
     // Timer
-    this.hub.on(
-      'timerStarted',
-      (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
-        this.stopTimeout();
-        this.timeLeft.set(t.remainingSeconds);
-        this.timerRunning.set(true);
-        this.endsAt = Date.now() + t.remainingSeconds * 1000;
-        this.startTick();
-      }
-    );
+    this.hub.on('timerStarted', (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
+      this.stopTimeout();
+      this.timeLeft.set(t.remainingSeconds);
+      this.timerRunning.set(true);
+      this.endsAt = Date.now() + t.remainingSeconds * 1000;
+      this.startTick();
+    });
 
     this.hub.on('timerPaused', (t: { remainingSeconds: number }) => {
       this.timeLeft.set(t.remainingSeconds);
@@ -175,16 +177,13 @@ export class RealtimeService {
       this.endsAt = undefined;
     });
 
-    this.hub.on(
-      'timerResumed',
-      (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
-        this.stopTimeout();
-        this.timeLeft.set(t.remainingSeconds);
-        this.timerRunning.set(true);
-        this.endsAt = Date.now() + t.remainingSeconds * 1000;
-        this.startTick();
-      }
-    );
+    this.hub.on('timerResumed', (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
+      this.stopTimeout();
+      this.timeLeft.set(t.remainingSeconds);
+      this.timerRunning.set(true);
+      this.endsAt = Date.now() + t.remainingSeconds * 1000;
+      this.startTick();
+    });
 
     this.hub.on('timerReset', (t: { remainingSeconds: number }) => {
       this.stopTimeout();
@@ -194,36 +193,47 @@ export class RealtimeService {
       this.endsAt = undefined;
     });
 
-    // Quarter
+    this.hub.on('timerUpdated', (t: { remainingSeconds: number }) => {
+      this.timeLeft.set(t.remainingSeconds);
+      if (this.timerRunning()) {
+        this.endsAt = Date.now() + t.remainingSeconds * 1000;
+      }
+    });
+
+    this.hub.on('matchUpdated', (p: { quarter?: number }) => {
+      if (typeof p?.quarter === 'number') this.quarter.set(p.quarter);
+    });
+
     this.hub.on('quarterChanged', (p: { quarter: number }) => {
       if (typeof p.quarter === 'number') this.quarter.set(p.quarter);
     });
 
-    // Fouls
     this.hub.on('foulsUpdated', (p: { homeFouls: number; awayFouls: number }) => {
       this.fouls.set({ home: p.homeFouls, away: p.awayFouls });
     });
 
-    // Buzzer
     this.hub.on('buzzer', () => this.playBuzzer());
 
-    // Fin de partido
-    this.hub.on(
-      'gameEnded',
-      (p: { home: number; away: number; winner: 'home' | 'away' | 'draw' }) => {
-        this.gameOver.set(p);
-      }
-    );
+    this.hub.on('gameEnded', (p: { home: number; away: number; winner: 'home' | 'away' | 'draw' }) => {
+      this.gameOver.set(p);
+    });
 
     await this.hub.start();
+
+    // Únete explícitamente al grupo
+    try {
+      await this.hub.invoke('JoinMatch', matchId);
+      console.log('[SignalR] joined match group', matchId);
+    } catch (e) {
+      console.error('[SignalR] JoinMatch failed', e);
+    }
   }
 
   async disconnect() {
     this.stopTick();
     this.stopTimeout();
     if (this.hub) {
-      await this.hub.stop();
-      this.hub = undefined;
+      try { await this.hub.stop(); } finally { this.hub = undefined; }
     }
   }
 }

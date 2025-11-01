@@ -1,0 +1,82 @@
+HTTP/1.1 200 OK
+Server: nginx/1.29.3
+Date: Sat, 01 Nov 2025 00:43:01 GMT
+Content-Type: application/pdf
+Transfer-Encoding: chunked
+Connection: keep-alive
+content-disposition: attachment; filename="players_all.pdf"
+
+%PDF-1.4
+%“Œ‹ž ReportLab Generated PDF document http://www.reportlab.com
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 8 0 R /MediaBox [ 0 0 595.2756 841.8898 ] /Parent 7 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/PageMode /UseNone /Pages 7 0 R /Type /Catalog
+>>
+endobj
+6 0 obj
+<<
+/Author (report-service) /CreationDate (D:20251101004301+00'00') /Creator (\(unspecified\)) /Keywords () /ModDate (D:20251101004301+00'00') /Producer (ReportLab PDF Library - www.reportlab.com) 
+  /Subject (\(unspecified\)) /Title (Reportes) /Trapped /False
+>>
+endobj
+7 0 obj
+<<
+/Count 1 /Kids [ 4 0 R ] /Type /Pages
+>>
+endobj
+8 0 obj
+<<
+/Filter [ /ASCII85Decode /FlateDecode ] /Length 525
+>>
+stream
+GasJN9i'e'&;KZL'dN+B+Kb0m5N6Wd,XA@h'_$)q&VO&j+!N.#]>'rBSJ5.pJ=P3T4-)o#gG+<@L%5%K"*!5Xlj<b"r"G_=)Z1%LqVnouSi!:*Ub"fG8N:LJcZ*+-Ek<m4"!3p%nI7E&5Sk=OKm'Dk0[:9^r?KPKDp.usf/=Z)29T"/Du!IY!r`B$.Ju;_fuYhL0fRf-gl)>-I;;n1]:<6Jr$p?iq;&bkT*#Rp^+_ibe-%70<U%<1.e=c4>tKY.N@f""'+;f@NpiWXi9?J1L"07-4g#,U+.ncGro5F/o`NEY+po@o`NZZj=fS!S,cYU0(@1g8duKVk<c!1,I8b((3E8(JN#BE<b@[9n:'iB\gg\m;p8d"-KCdcM@9$5l2;$O`-QGujT>/o\=Su2(gZIB]8fZddkIUW@9ltIZ7=$/K*f.dX7YIftkKcdE*2MccR\soYICKcV3-'IN_gU$F0?GG-INkcdh`8D-8`Q/5;;s"A8G8Lr`,LE_)"rT\<>*4+Mmm[lnGs2rmUZ~>endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000073 00000 n 
+0000000114 00000 n 
+0000000221 00000 n 
+0000000333 00000 n 
+0000000536 00000 n 
+0000000604 00000 n 
+0000000883 00000 n 
+0000000942 00000 n 
+trailer
+<<
+/ID 
+[<c00b443233dcc1c8365da945c1740d9c><c00b443233dcc1c8365da945c1740d9c>]
+% ReportLab generated PDF document -- digest (http://www.reportlab.com)
+
+/Info 6 0 R
+/Root 5 0 R
+/Size 9
+>>
+startxref
+1557
+%%EOF

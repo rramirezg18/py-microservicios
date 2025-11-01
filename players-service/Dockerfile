@@ -1,18 +1,16 @@
-# Usar una imagen oficial de Node.js como base
 FROM node:20-alpine
 
-# Establecer el directorio de trabajo dentro del contenedor
 WORKDIR /usr/src/app
 
-# Copiar el package.json y package-lock.json para instalar dependencias
 COPY package*.json ./
-RUN npm install
+# Si no usas dependencias dev en runtime:
+# npm ci --omit=dev || si no tienes lock, usa npm install --omit=dev
+RUN npm ci || npm install
 
-# Copiar el resto de los archivos de la aplicación
 COPY . .
 
-# Exponer el puerto en el que corre la aplicación
-EXPOSE 3001
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
 
-# Comando para ejecutar la aplicación (¡Esta es la línea que cambiamos!)
-CMD [ "npx", "nodemon", "src/app.js" ]
+CMD ["node", "src/app.js"]

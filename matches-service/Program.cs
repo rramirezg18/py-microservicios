@@ -1,9 +1,16 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+
 using MatchesService.Data;
 using MatchesService.Repositories;
 using MatchesService.Services;
 using MatchesService.Services.Runtime;
 using MatchesService.Hubs;
+using MatchesService.Http;
+   // 👈 NUEVO: handler que reenvía Authorization
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,8 +46,75 @@ builder.Services.AddSingleton<IMatchRunTime, MatchRunTime>();
 // SignalR
 builder.Services.AddSignalR();
 
-// HttpClient externo
-builder.Services.AddHttpClient();
+// =========  👇 NUEVO: HttpClient que reenvía Authorization al teams-service  =========
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<ForwardAuthHandler>();
+
+builder.Services.AddHttpClient("Teams", (sp, http) =>
+{
+    // En docker-compose: TeamsService__BaseUrl: "http://teams-service:8082/api/teams"
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = cfg["TeamsService:BaseUrl"]
+                  ?? throw new InvalidOperationException("TeamsService:BaseUrl no configurado");
+    http.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/"); // => .../api/teams/
+})
+.AddHttpMessageHandler<ForwardAuthHandler>();
+
+
+
+builder.Services.AddHttpContextAccessor();           // ✅
+builder.Services.AddTransient<ForwardAuthHandler>(); // ✅
+
+builder.Services.AddHttpClient("teams", (sp, client) =>
+{
+    var cfg = sp.GetRequiredService<IConfiguration>();
+    var baseUrl = cfg["TeamsService:BaseUrl"] ?? "http://teams-service:8082/api/teams";
+    client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+})
+.AddHttpMessageHandler<ForwardAuthHandler>();  
+
+// (tu AddHttpClient() genérico puede quedarse; no estorba)
+// builder.Services.AddHttpClient();
+
+// ===========================
+// ✅ AuthN/ AuthZ (JWT + roles)
+// ===========================
+var issuer   = builder.Configuration["Jwt:Issuer"]   ?? "auth-service";
+var audience = builder.Configuration["Jwt:Audience"] ?? "py-microservices";
+var keyRaw   = builder.Configuration["Jwt:Key"]      ?? "CHANGE_ME_DEV_SECRET_32_BYTES_MINIMUM";
+
+if (Encoding.UTF8.GetBytes(keyRaw).Length < 32)
+{
+    // Evita arrancar con clave débil
+    throw new InvalidOperationException("Jwt:Key debe tener al menos 32 bytes.");
+}
+
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyRaw));
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = signingKey,
+            ClockSkew = TimeSpan.Zero,
+            RoleClaimType = "role",
+            NameClaimType = ClaimTypes.NameIdentifier
+        };
+        options.RequireHttpsMetadata = false; // en Docker dev
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin",   p => p.RequireRole("Admin"));
+    options.AddPolicy("Control", p => p.RequireRole("Control"));
+});
 
 var app = builder.Build();
 
@@ -50,7 +124,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MatchesDbContext>();
-    db.Database.Migrate(); // ⬅️ Aplica todas las migraciones pendientes
+    db.Database.Migrate();
 }
 
 // ==========================================================
@@ -62,7 +136,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// En docker suele bastar con HTTP
 // app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
@@ -72,13 +145,10 @@ app.UseAuthorization();
 // ==========================================================
 // 🔌 ENDPOINTS Y HUBS
 // ==========================================================
-app.MapControllers();
+app.MapControllers();              // puedes añadir [Authorize(Policy="Control")] donde aplique
 app.MapHub<ScoreHub>("/hub/score");
 
-// Health (para curl rápido)
+// Health
 app.MapGet("/health", () => Results.Ok("OK"));
 
-// ==========================================================
-// 🟢 RUN
-// ==========================================================
 app.Run();

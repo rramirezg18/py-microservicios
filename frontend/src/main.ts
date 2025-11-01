@@ -1,20 +1,13 @@
+// src/main.ts
 console.log('Zone present?', (globalThis as any).Zone?.version);
-import { bootstrapApplication } from '@angular/platform-browser';
-import { importProvidersFrom } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { HttpClientModule } from '@angular/common/http';
 
+import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
-import { routes } from './app/app.routes';
+import { appConfig } from './app/app.config';
 
 console.log('>> Bootstrapping Angular app …');
 
-bootstrapApplication(AppComponent, {
-  providers: [
-    provideRouter(routes),
-    importProvidersFrom(HttpClientModule)
-  ]
-})
+bootstrapApplication(AppComponent, appConfig)
   .then(appRef => {
     console.log('>> Angular app bootstrapped successfully', appRef);
   })

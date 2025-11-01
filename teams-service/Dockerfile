@@ -1,18 +1,19 @@
 # ===== build =====
 FROM maven:3.9.8-eclipse-temurin-17 AS build
 WORKDIR /app
+
 COPY pom.xml .
 RUN mvn -q -DskipTests dependency:go-offline
+
 COPY src ./src
-# importante: que ejecute el repackage
-RUN mvn -q -DskipTests clean package
+# compila y deja un app.jar en /app
+RUN mvn -q -DskipTests clean package && \
+    cp target/*.jar /app/app.jar
 
-# ===== runtime =====
-FROM eclipse-temurin:17-jre-alpine
+# ===== runtime (Java 17 JRE) =====
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-EXPOSE 8082
-ENV JAVA_OPTS=""
+COPY --from=build /app/app.jar /app/app.jar
 
-# copia SOLO el jar reempacado (no el .original)
-COPY --from=build /app/target/teams-service-*.jar /app/app.jar
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/app.jar"]
+EXPOSE 8082
+ENTRYPOINT ["java","-jar","/app/app.jar"]

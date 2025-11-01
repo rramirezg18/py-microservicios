@@ -1,14 +1,14 @@
+// src/app/services/api/environments.ts
 export const environment = {
   production: true,
 
-  // Auth-Service (ASP.NET API)
-  apiBaseUrl: 'http://localhost:5000/api',
+  // Siempre a través de Nginx (mismo origen):
+  apiBaseUrl: '/api',
 
-  // Teams-Service (Spring Boot)
-  teamsApiUrl: 'http://teams-service:8082/api/teams',
-  
-  // Players-Service (Node/Laravel o Express)
-  playersApiUrl: 'http://players-service:3000/api/players',
-    // --- OAuth Redirect (coincide con appsettings.json) ---
-  oauthRedirect: 'http://localhost/oauth/callback'
+  // Rutas convenientes por si en otros servicios las usas desde environment:
+  teamsApiUrl: '/api/teams',
+  playersApiUrl: '/api/players',
+
+  // Donde aterriza el callback de OAuth en tu SPA
+  oauthRedirect: '/oauth/callback',
 };

@@ -21,7 +21,6 @@ public class PlayersClient {
     this.web = builder.baseUrl(baseUrl).build();
   }
 
-  // === Firmas que espera tu Controller/Service ===
   public List<PlayerDto> getPlayersByTeam(Long teamId) {
     return web.get()
         .uri("/players/team/{id}", teamId)
