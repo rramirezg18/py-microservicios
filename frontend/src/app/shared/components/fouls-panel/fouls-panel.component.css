@@ -1,22 +1,25 @@
 .fouls-panel {
-  display: grid;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+  text-align: center;
 }
 
-.fouls-panel .title {
+.fouls-panel h4 {
+  font-size: 0.9rem;
   letter-spacing: 2px;
-  font-weight: 800;
-  color: #cfe8ff;
   margin-bottom: 0.5rem;
 }
 
-.fouls-panel .box {
-  width: 90px;
-  height: 120px;
-  border: 4px solid #fff;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-  font-size: 56px;
-  color: #fff;
+.foul-box {
+  width: 80px;
+  height: 100px;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  font-size: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
 }

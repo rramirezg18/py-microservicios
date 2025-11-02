@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,6 +24,7 @@ export class ControlPanelComponent implements OnDestroy {
   private readonly matchesService = inject(MatchesService);
   private readonly dialog = inject(MatDialog);
   private readonly tournamentsStore = inject(TournamentsStore);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   private hub?: signalR.HubConnection;
 
@@ -52,7 +53,9 @@ export class ControlPanelComponent implements OnDestroy {
 
   constructor() {
     this.route.paramMap.subscribe(params => {
-      const id = Number(params.get('id'));
+      const rawId = params.get('id');
+      const id = rawId ? Number(rawId) : 1; // 👈 fallback por defecto
+      console.log('[ControlPanel] Cargando partido con ID', id);
       if (Number.isFinite(id) && id > 0) this.loadMatch(id);
     });
   }
@@ -69,6 +72,9 @@ export class ControlPanelComponent implements OnDestroy {
   get quarter(): number { return this.match()?.quarter ?? 1; }
   get isFinished(): boolean { return (this.match()?.status ?? '').toLowerCase() === 'finished'; }
 
+  // ===========================
+  //  SELECCIÓN / RECARGA
+  // ===========================
   chooseMatch(): void {
     const dialogRef = this.dialog.open(PickMatchDialogComponent, { width: '700px' });
     dialogRef.afterClosed().subscribe(result => {
@@ -82,6 +88,9 @@ export class ControlPanelComponent implements OnDestroy {
     if (id) this.loadMatch(id);
   }
 
+  // ===========================
+  //  MARCADOR Y FALTAS
+  // ===========================
   addPoints(team: TeamSide, points: number): void {
     if (!this.matchId || this.isFinished) return;
     this.pendingAction.set(true);
@@ -93,6 +102,7 @@ export class ControlPanelComponent implements OnDestroy {
           status: updated.status
         });
         this.pendingAction.set(false);
+        this.cdr.detectChanges();
       },
       error: error => this.handleError('No se pudo actualizar el marcador', error)
     });
@@ -103,13 +113,20 @@ export class ControlPanelComponent implements OnDestroy {
     this.pendingAction.set(true);
     this.matchesService.addFoul(this.matchId, team, amount).subscribe({
       next: updated => {
-        this.mergeMatch({ foulsHome: updated.foulsHome, foulsAway: updated.foulsAway });
+        this.mergeMatch({
+          foulsHome: updated.foulsHome,
+          foulsAway: updated.foulsAway
+        });
         this.pendingAction.set(false);
+        this.cdr.detectChanges();
       },
       error: error => this.handleError('No se pudo registrar la falta', error)
     });
   }
 
+  // ===========================
+  //  TEMPORIZADOR
+  // ===========================
   controlTimer(action: 'start' | 'pause' | 'resume' | 'reset'): void {
     if (!this.matchId || this.isFinished) return;
     this.pendingAction.set(true);
@@ -119,6 +136,7 @@ export class ControlPanelComponent implements OnDestroy {
         this.mergeMatch(updated);
         this.configureCountdown(updated.timerRunning, updated.timeRemaining);
         this.pendingAction.set(false);
+        this.cdr.detectChanges();
       },
       error: error => this.handleError('No se pudo actualizar el temporizador', error)
     });
@@ -132,8 +150,8 @@ export class ControlPanelComponent implements OnDestroy {
         this.mergeMatch(updated);
         this.configureCountdown(updated.timerRunning, updated.timeRemaining);
         this.pendingAction.set(false);
+        this.cdr.detectChanges();
 
-        // Auto-finaliza si se completó el 4.º cuarto (timer en 0 o ya detenido)
         const q = updated.quarter ?? 1;
         const doneThisQuarter = (updated.timeRemaining ?? 0) <= 0 && !updated.timerRunning;
         if (!this.isFinished && (q >= 4 && doneThisQuarter)) {
@@ -144,6 +162,9 @@ export class ControlPanelComponent implements OnDestroy {
     });
   }
 
+  // ===========================
+  //  FINALIZAR PARTIDO
+  // ===========================
   finishMatch(): void {
     if (!this.matchId || this.isFinished) return;
     Swal.fire({
@@ -159,7 +180,6 @@ export class ControlPanelComponent implements OnDestroy {
     });
   }
 
-  // --- Helpers de finalizar ---
   private finalizeWithCurrentScore(silent: boolean): void {
     if (!this.matchId) return;
     const current = this.match();
@@ -180,6 +200,8 @@ export class ControlPanelComponent implements OnDestroy {
         this.configureCountdown(false, 0);
         this.syncTournamentBracket(updated);
         this.pendingAction.set(false);
+        this.cdr.detectChanges();
+
         if (!silent) {
           Swal.fire({
             title: 'Partido finalizado',
@@ -194,9 +216,9 @@ export class ControlPanelComponent implements OnDestroy {
     });
   }
 
-  // -------------------------
-  // Carga / Hub / estado local
-  // -------------------------
+  // ===========================
+  //  HUB / CARGA / ESTADO LOCAL
+  // ===========================
   private loadMatch(id: number): void {
     this.loading.set(true);
     this.matchesService.getMatch(id).subscribe({
@@ -205,6 +227,7 @@ export class ControlPanelComponent implements OnDestroy {
         this.match.set(match);
         this.configureCountdown(match.timerRunning, match.timeRemaining);
         this.connectToHub(match.id);
+        this.cdr.detectChanges();
       },
       error: error => {
         this.loading.set(false);
@@ -214,17 +237,13 @@ export class ControlPanelComponent implements OnDestroy {
     });
   }
 
-  private handleError(message: string, error: any): void {
-    this.pendingAction.set(false);
-    console.error(message, error);
-    Swal.fire({
-      title: message,
-      text: error?.error?.error ?? error?.message ?? 'Error desconocido',
-      icon: 'error'
-    });
-  }
-
   private async connectToHub(matchId: number): Promise<void> {
+    // 🧩 Validar matchId
+    if (!matchId || matchId <= 0 || Number.isNaN(matchId)) {
+      console.warn('[SignalR] matchId inválido, usando valor 1 por defecto');
+      matchId = 1;
+    }
+
     await this.disconnectHub();
 
     const getToken = () =>
@@ -241,58 +260,39 @@ export class ControlPanelComponent implements OnDestroy {
       .withAutomaticReconnect()
       .build();
 
-    this.hub.on('matchUpdated', (payload: MatchModel) => {
-      if (payload?.id === this.matchId) {
-        const { timeRemaining, timerRunning, ...rest } = payload;
-        this.mergeMatch(rest);
-      }
-    });
-    this.hub.on('scoreUpdated', (p: { homeScore: number; awayScore: number }) =>
-      this.mergeMatch({ homeScore: p.homeScore, awayScore: p.awayScore })
-    );
-    this.hub.on('foulsUpdated', (p: { homeFouls: number; awayFouls: number }) =>
-      this.mergeMatch({ foulsHome: p.homeFouls, foulsAway: p.awayFouls })
-    );
-
-    const syncTimer = (running: boolean, seconds: number) =>
-      this.configureCountdown(running, seconds);
-
-    this.hub.on('timerStarted', (p: { remainingSeconds: number }) => syncTimer(true, p.remainingSeconds));
-    this.hub.on('timerResumed', (p: { remainingSeconds: number }) => syncTimer(true, p.remainingSeconds));
-    this.hub.on('timerPaused', (p: { remainingSeconds: number }) => syncTimer(false, p.remainingSeconds));
-    this.hub.on('timerReset', (p: { remainingSeconds: number }) => syncTimer(false, p.remainingSeconds));
-    this.hub.on('timerUpdated', (p: { remainingSeconds: number }) =>
-      this.configureCountdown(this.match()?.timerRunning ?? false, p.remainingSeconds)
-    );
-
-    this.hub.on('quarterChanged', (p: { quarter: number }) => {
-      if (typeof p?.quarter === 'number') this.mergeMatch({ quarter: p.quarter });
-    });
-
-    this.hub.on('gameEnded', (p: { home: number; away: number; winner: string }) => {
-      const current = this.match();
+    // 🏀 Marcador
+    this.hub.on('scoreUpdated', (p: any) => {
+      console.log('[SignalR] scoreUpdated', p);
       this.mergeMatch({
-        status: 'finished',
-        homeScore: p?.home ?? current?.homeScore ?? 0,
-        awayScore: p?.away ?? current?.awayScore ?? 0,
-        timerRunning: false,
-        timeRemaining: 0
+        homeScore: p.homeScore ?? p.HomeScore ?? 0,
+        awayScore: p.awayScore ?? p.AwayScore ?? 0
       });
-      this.configureCountdown(false, 0);
-      this.syncTournamentBracket(this.match()!);
-      Swal.fire({
-        title: 'Partido finalizado',
-        text: `Marcador final ${p.home} - ${p.away}`,
-        icon: 'info',
-        timer: 2500,
-        showConfirmButton: false
-      });
+      this.cdr.detectChanges();
+    });
+
+    // 🚨 Faltas
+    this.hub.on('foulsUpdated', (p: any) => {
+      console.log('[SignalR] foulsUpdated', p);
+      const foulsHome = p.foulsHome ?? p.homeFouls ?? 0;
+      const foulsAway = p.foulsAway ?? p.awayFouls ?? 0;
+      this.mergeMatch({ foulsHome, foulsAway });
+      this.cdr.detectChanges();
+    });
+
+    // 🕐 Cambio de cuarto
+    this.hub.on('quarterChanged', (p: { quarter: number }) => {
+      console.log('[SignalR] quarterChanged', p);
+      if (typeof p?.quarter === 'number') {
+        this.mergeMatch({ quarter: p.quarter });
+        this.cdr.detectChanges();
+      }
     });
 
     try {
       await this.hub.start();
+      console.log(`✅ [SignalR] Conectado correctamente al grupo match-${matchId}`);
     } catch (error) {
-      console.error('No se pudo conectar al hub de partidos', error);
+      console.error('❌ No se pudo conectar al hub de partidos:', error);
     }
   }
 
@@ -309,6 +309,9 @@ export class ControlPanelComponent implements OnDestroy {
     this.match.set({ ...current, ...partial });
   }
 
+  // ===========================
+  //  TEMPORIZADOR LOCAL
+  // ===========================
   private configureCountdown(running: boolean, seconds: number): void {
     this.clearCountdown();
     this.match.update(current =>
@@ -339,5 +342,15 @@ export class ControlPanelComponent implements OnDestroy {
     void this.tournamentsStore
       .updateMatchResult('cup-current', String(updated.id), updated.homeScore, updated.awayScore)
       .catch(() => {});
+  }
+
+  private handleError(message: string, error: any): void {
+    this.pendingAction.set(false);
+    console.error(message, error);
+    Swal.fire({
+      title: message,
+      text: error?.error?.error ?? error?.message ?? 'Error desconocido',
+      icon: 'error'
+    });
   }
 }
