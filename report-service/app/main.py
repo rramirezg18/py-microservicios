@@ -1,4 +1,4 @@
-# app/main.py
+
 from __future__ import annotations
 
 import io
@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from . import clients, pdf_utils
 from .aggregators import teams_map, match_roster, aggregate_stats_from_matches
-from .deps_auth import require_admin  # <- nuevo
+from .deps_auth import require_admin  
 from app.routes_json import router as json_router
 from typing import Optional
 from fastapi import Header, HTTPException, Depends 
@@ -19,15 +19,14 @@ from fastapi import Header, HTTPException, Depends
 
 app = FastAPI()
 
-INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")  # para Nginx trusted hop
+INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "") 
 
-# ---------- Seguridad ----------
+#Seguridad
 async def admin_dep(
     authorization: Optional[str] = Header(default=None, alias="Authorization"),
     x_api_authorization: Optional[str] = Header(default=None, alias="X-Api-Authorization"),
     x_internal_secret: Optional[str] = Header(default=None, alias="X-Internal-Secret"),
 ):
-    # Trusted hop desde Nginx (si usas INTERNAL_SECRET)
     if INTERNAL_SECRET and x_internal_secret == INTERNAL_SECRET:
         return
     # Fallback: usa Authorization o, si Nginx no lo reenvía, usa X-Api-Authorization

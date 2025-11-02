@@ -1,4 +1,4 @@
-// src/middlewares/auth.js
+
 const jwt = require('jsonwebtoken');
 
 function getVerifyOptions() {
@@ -9,8 +9,8 @@ function getVerifyOptions() {
 }
 
 function verifyToken(token) {
-  const pub = process.env.AUTH_PUBLIC_KEY_PEM;      // RS256 (futuro)
-  const secret = process.env.AUTH_HS256_SECRET;     // HS256 (actual)
+  const pub = process.env.AUTH_PUBLIC_KEY_PEM;     
+  const secret = process.env.AUTH_HS256_SECRET;     
   if (pub) {
     return jwt.verify(token, pub, { ...getVerifyOptions(), algorithms: ['RS256'] });
   }
@@ -56,7 +56,7 @@ function requireRole(required) {
   };
 }
 
-// Atajo: requiere Auth y al menos uno de estos roles
+
 function requireAnyRole(...roles) {
   const flat = roles.flat();
   return [requireAuth, requireRole(flat)];

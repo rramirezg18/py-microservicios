@@ -1,4 +1,3 @@
-// src/app.js
 
 const express = require('express');
 require('dotenv').config();
@@ -11,9 +10,9 @@ const logger = require('./config/logger');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Configuración de CORS
+
 const corsOptions = {
-    // Orígenes permitidos. Incluimos http://localhost para tu frontend en el puerto 80.
+
     origin: ['http://localhost', 'http://127.0.0.1'], 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -50,7 +49,7 @@ app.get('/', (req, res) => {
   res.json({ message: '¡El servicio de jugadores está funcionando! 🚀' });
 });
 
-// Usamos las rutas bajo el prefijo /api
+// Usamos las rutas  /api
 app.use('/api', playerRoutes);
 
 app.use(notFound);

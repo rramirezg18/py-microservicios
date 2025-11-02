@@ -8,7 +8,7 @@ from redis import asyncio as aioredis
 class Cache:
     redis: aioredis.Redis
     prefix: str = "cache:"
-    ttl_seconds: int = 300  # 5 minutos
+    ttl_seconds: int = 300  
 
     @classmethod
     def from_env(cls) -> "Cache":

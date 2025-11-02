@@ -20,7 +20,6 @@ public class TournamentsController : ControllerBase
         _query = query;
     }
 
-    // Inicializa un torneo demo si la tabla está vacía (solo para dev)
     private async Task EnsureSeedAsync()
     {
         if (await _db.Tournaments.AnyAsync()) return;
@@ -42,7 +41,7 @@ public class TournamentsController : ControllerBase
         _db.Tournaments.Add(t);
         _db.Groups.AddRange(gA, gB);
 
-        // 2 slots por grupo, sin asignación inicial (placeholders)
+        // 2 slots por grupo, sin asignación inicial 
         _db.BracketMatches.AddRange(
             new BracketMatch { Tournament = t, Group = gA, Round = "group", SlotIndex = 0, Label = "Ronda grupal 1" },
             new BracketMatch { Tournament = t, Group = gA, Round = "group", SlotIndex = 1, Label = "Ronda grupal 2" },
@@ -50,7 +49,7 @@ public class TournamentsController : ControllerBase
             new BracketMatch { Tournament = t, Group = gB, Round = "group", SlotIndex = 1, Label = "Ronda grupal 2" }
         );
 
-        // Final placeholder
+
         var final = new BracketMatch { Tournament = t, Round = "final", Label = "Final" };
         _db.BracketMatches.Add(final);
         t.FinalMatch = final;
@@ -99,7 +98,7 @@ public class TournamentsController : ControllerBase
 
         if (match == null) return NotFound(new { error = "Slot no encontrado en el grupo." });
 
-        // Asigna (o limpia si viene null)
+
         match.ExternalMatchId = body.matchId;
         await _db.SaveChangesAsync();
 
@@ -109,14 +108,14 @@ public class TournamentsController : ControllerBase
 
     public record UpdateMatchRequestDto(int scoreA, int scoreB, string? status);
 
-    // Mínimo para evitar 404 si tu UI lo llama
+
     [HttpPatch("{tournamentId}/matches/{matchId}")]
     public async Task<IActionResult> UpdateMatchAsync(
         [FromRoute] string tournamentId,
         [FromRoute] string matchId,
         [FromBody] UpdateMatchRequestDto dto)
     {
-        // Si hay coincidencia de ExternalMatchId, marcamos status (simple)
+
         if (int.TryParse(matchId, out var externalId))
         {
             var bm = await _db.BracketMatches

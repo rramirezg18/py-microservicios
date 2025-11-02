@@ -1,4 +1,3 @@
-// src/services/playerService.js
 
 const { pool } = require('../config/database');
 

@@ -6,22 +6,21 @@ namespace MatchesService.Hubs
     [AllowAnonymous]
     public class ScoreHub : Hub
     {
-        // 🔹 Genera el nombre del grupo basado en el ID del partido
+     
         public static string GroupName(int matchId) => $"match-{matchId}";
 
-        // 🚀 Se ejecuta al conectar un cliente
         public override async Task OnConnectedAsync()
         {
             var http = Context.GetHttpContext();
 
-            // ✅ Primero intenta leer el matchId del query string
+           
             string? idStr = http?.Request.Query["matchId"].ToString();
 
-            // ✅ Luego intenta obtenerlo del header X-Match-Id
+           
             if (string.IsNullOrWhiteSpace(idStr))
                 idStr = http?.Request.Headers["X-Match-Id"].ToString();
 
-            // 🩵 Compatibilidad adicional por si viene en la ruta
+            
             if (string.IsNullOrWhiteSpace(idStr) && http?.Request.Path.HasValue == true)
             {
                 var path = http.Request.Path.Value ?? "";
@@ -47,7 +46,7 @@ namespace MatchesService.Hubs
             await base.OnConnectedAsync();
         }
 
-        // 🔌 Se ejecuta cuando un cliente se desconecta
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             var http = Context.GetHttpContext();
@@ -65,7 +64,7 @@ namespace MatchesService.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        // 📢 Envía actualización de faltas a todos los clientes del grupo
+
         public async Task BroadcastFouls(int matchId, int homeFouls, int awayFouls)
         {
             var group = GroupName(matchId);
@@ -78,7 +77,7 @@ namespace MatchesService.Hubs
             Console.WriteLine($"📢 Emitido foulsUpdated → {group}: L={homeFouls}, V={awayFouls}");
         }
 
-        // 📢 Cliente se une manualmente a un grupo
+
         public async Task JoinMatch(int matchId)
         {
             var group = GroupName(matchId);
@@ -86,7 +85,7 @@ namespace MatchesService.Hubs
             Console.WriteLine($"➕ Cliente se une manualmente a grupo {group}");
         }
 
-        // 📢 Cliente abandona un grupo
+
         public async Task LeaveMatch(int matchId)
         {
             var group = GroupName(matchId);

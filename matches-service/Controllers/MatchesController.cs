@@ -20,15 +20,12 @@ namespace MatchesService.Controllers
             this.hub = hub;
         }
 
-        // ===========================
-        // ✅ Health
-        // ===========================
+
         [HttpGet("health")]
         public IActionResult Health() => Ok("OK");
 
-        // ===========================
-        // ✅ Listar partidos
-        // ===========================
+
+        //istar partidos
         [HttpGet]
         [HttpGet("list")]
         public async Task<IActionResult> Listar(
@@ -51,9 +48,7 @@ namespace MatchesService.Controllers
             return Ok(result);
         }
 
-        // ===========================
-        // ✅ Programar partido
-        // ===========================
+        //prograa
         [HttpPost("programar")]
         public async Task<IActionResult> Programar([FromBody] ProgramarPartidoDto dto)
         {
@@ -61,7 +56,7 @@ namespace MatchesService.Controllers
             return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
         }
 
-        // ✅ Próximos
+        //Próximos
         [HttpGet("proximos")]
         public async Task<IActionResult> Proximos()
         {
@@ -69,7 +64,7 @@ namespace MatchesService.Controllers
             return Ok(result);
         }
 
-        // ✅ Rango
+        //Rango
         [HttpGet("rango")]
         public async Task<IActionResult> Rango([FromQuery] DateTime from, [FromQuery] DateTime to)
         {
@@ -77,9 +72,7 @@ namespace MatchesService.Controllers
             return result.Success ? Ok(result.Data) : BadRequest(new { error = result.Error });
         }
 
-        // ===========================
-        // ✅ Puntuaciones
-        // ===========================
+        // marcador
         [HttpPost("{id:int}/score")]
         public async Task<IActionResult> AddScore(int id, [FromBody] AddScoreDto dto)
         {
@@ -90,9 +83,7 @@ namespace MatchesService.Controllers
             return Ok(result.Data);
         }
 
-        // ===========================
-        // ✅ Faltas (registrar y ajustar)
-        // ===========================
+        //ajustar faltas
         [HttpPost("{id:int}/foul")]
         [HttpPost("{id:int}/fouls")]
         public async Task<IActionResult> AddFoul(int id, [FromBody] AddFoulDto dto)
@@ -135,9 +126,7 @@ namespace MatchesService.Controllers
             return Ok(result.Data);
         }
 
-        // ===========================
-        // ✅ Temporizador
-        // ===========================
+        // post para iniciar un partido se cambia el estado a live
         [HttpPost("{id:int}/timer/start")]
         public async Task<IActionResult> StartTimer(int id, [FromBody] StartTimerDto? dto)
         {
@@ -178,9 +167,7 @@ namespace MatchesService.Controllers
             return Ok(result.Data);
         }
 
-        // ===========================
-        // ✅ Cuartos
-        // ===========================
+        //avanzar periodo
         [HttpPost("{id:int}/quarters/advance")]
         public async Task<IActionResult> AdvanceQuarter(int id)
         {
@@ -204,9 +191,7 @@ namespace MatchesService.Controllers
             return Ok(result.Data);
         }
 
-        // ===========================
-        // ✅ Finalizar / Cancelar / Suspender
-        // ===========================
+        //post que finaliza el partido 
         [HttpPost("{id:int}/finish")]
         public async Task<IActionResult> Finish(int id, [FromBody] FinishMatchDto dto)
         {

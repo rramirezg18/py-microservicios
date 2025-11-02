@@ -2,7 +2,7 @@ namespace TournamentService.Entities;
 
 public class TournamentEntity
 {
-    // Usamos un string legible como clave: "cup2025"
+
     public string Id { get; set; } = default!;
     public string Code { get; set; } = default!;
     public string Name { get; set; } = default!;

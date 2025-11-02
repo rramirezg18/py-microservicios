@@ -21,14 +21,14 @@ def _parse_color(value: str):
         v = str(value).strip()
         if v.startswith("#"):
             return colors.HexColor(v)
-        # nombres -> toColor (puede lanzar)
+        # nombres -> toColor 
         return colors.toColor(v)
     except Exception:
         return colors.whitesmoke
 
 
 def _text_color_for(bg):
-    # bg.red/green/blue ∈ [0,1]
+    
     lum = 0.299 * bg.red + 0.587 * bg.green + 0.114 * bg.blue
     return colors.black if lum > 0.5 else colors.white
 
@@ -45,7 +45,7 @@ def _to_local(dt_str: str, tz: str = "UTC") -> str:
                 pass
         return dt.strftime("%Y-%m-%d %H:%M")
     except Exception:
-        # si no es ISO, regresa tal cual
+        
         return dt_str
 
 

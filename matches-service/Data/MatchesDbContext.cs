@@ -17,7 +17,7 @@ namespace MatchesService.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // ===== MATCH =====
+            // Matches
             modelBuilder.Entity<Match>(e =>
             {
                 e.Property(p => p.Status).HasMaxLength(32);
@@ -36,7 +36,6 @@ namespace MatchesService.Data
                 });
             });
 
-            // ===== SCORE EVENT =====
             modelBuilder.Entity<ScoreEvent>(e =>
             {
                 e.Property(p => p.DateRegister).HasDefaultValueSql("GETUTCDATE()");
@@ -56,7 +55,7 @@ namespace MatchesService.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // ===== FOUL =====
+            //faltas
             modelBuilder.Entity<Foul>(e =>
             {
                 e.Property(p => p.DateRegister).HasDefaultValueSql("GETUTCDATE()");
@@ -71,7 +70,7 @@ namespace MatchesService.Data
                  .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // ===== TEAM WIN =====
+            // equipo ganador
             modelBuilder.Entity<TeamWin>(e =>
             {
                 e.Property(p => p.DateRegistered).HasDefaultValueSql("GETUTCDATE()");

@@ -1,4 +1,4 @@
-# app/routes_json.py
+
 from __future__ import annotations
 
 import httpx
@@ -8,15 +8,14 @@ from . import clients
 from .aggregators import aggregate_stats_from_matches
 from .deps_auth import require_admin
 
-# --- Seguridad (igual que main, pero simplificada) ---
+
 async def _admin_dep(
     authorization: str | None = Header(default=None, alias="Authorization"),
 ):
     # valida JWT del auth-service y rol Admin
     await require_admin(authorization)
 
-# NOTA: NO ponemos prefix aquí.
-# Lo agregamos al incluir el router desde main.py con prefix="/api/reports"
+
 router = APIRouter(
     tags=["reports-json"],
     dependencies=[Depends(_admin_dep)],

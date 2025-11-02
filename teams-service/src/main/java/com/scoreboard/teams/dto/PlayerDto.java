@@ -15,7 +15,7 @@ public class PlayerDto {
     private String nationality;
     private String teamName;
 
-    // Campos opcionales (si Laravel los devuelve)
+
     private String email;
     private Integer age;
     private String team;

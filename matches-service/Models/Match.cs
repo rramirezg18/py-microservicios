@@ -32,7 +32,7 @@ namespace MatchesService.Models
         public ICollection<ScoreEvent> ScoreEvents { get; set; } = new List<ScoreEvent>();
         public ICollection<Foul> Fouls { get; set; } = new List<Foul>();
 
-        // Concurrencia optimista (opcional recomendado)
+
         [Timestamp]
         public byte[]? RowVersion { get; set; }
     }

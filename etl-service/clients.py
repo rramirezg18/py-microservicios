@@ -36,14 +36,14 @@ def _as_list_items(data: Any) -> list[dict[str, Any]]:
 async def _get_all_pages(url: str, headers: dict, params_flat: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     acc: list[dict[str, Any]] = []
     async with httpx.AsyncClient(timeout=15) as cx:
-        # primer intento: página 0..N
+
         page = 0
         while True:
             params = {"page": page, "size": PAGE_SIZE}
             if params_flat: params.update(params_flat)
             r = await cx.get(url, headers=headers, params=params)
             if r.status_code == 404:
-                # segundo intento: sin paginar
+
                 rr = await cx.get(url, headers=headers, params=params_flat or {})
                 rr.raise_for_status()
                 return _as_list_items(rr.json())
@@ -63,7 +63,7 @@ async def _get_all_pages(url: str, headers: dict, params_flat: dict[str, Any] | 
             if page >= MAX_AUTOPAGES: break
     return acc
 
-# Endpoints específicos
+
 async def fetch_teams() -> list[dict[str, Any]]:
     return await _get_all_pages(f"{TEAMS_API_BASE}/api/teams", _hdr(TEAMS_API_TOKEN))
 

@@ -11,9 +11,6 @@ from .config import (
     choose_header,
 )
 
-# -------------------------
-# Helpers
-# -------------------------
 def _as_list_items(data: Any) -> list[dict[str, Any]]:
     """
     Normaliza formatos:

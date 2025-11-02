@@ -10,7 +10,7 @@ INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "")
 
 
 def verify_admin(authorization: str | None, x_internal_secret: str | None):
-    # Vía 1: secreto interno desde Nginx
+
     if (
         INTERNAL_SECRET
         and x_internal_secret
@@ -18,7 +18,7 @@ def verify_admin(authorization: str | None, x_internal_secret: str | None):
     ):
         return
 
-    # Vía 2 (opcional para curl): JWT propio del RS
+
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing Authorization"

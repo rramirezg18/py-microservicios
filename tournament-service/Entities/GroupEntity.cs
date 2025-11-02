@@ -3,7 +3,7 @@ namespace TournamentService.Entities;
 public class GroupEntity
 {
     public int Id { get; set; }
-    // Clave legible para rutas: "group-a", "group-b"
+
     public string Key { get; set; } = default!;
     public string Name { get; set; } = default!;
     public string? Color { get; set; }

@@ -98,7 +98,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Admin",   p => p.RequireRole("Admin"));
     options.AddPolicy("Control", p => p.RequireRole("Control"));
 });
-
+/*
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("frontend", p =>
@@ -106,7 +106,7 @@ builder.Services.AddCors(opt =>
          .AllowAnyHeader()
          .AllowAnyMethod()
          .AllowCredentials());
-});
+});*/
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

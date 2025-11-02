@@ -1,8 +1,0 @@
-HTTP/1.1 200 OK
-Server: nginx/1.29.3
-Date: Sat, 01 Nov 2025 00:43:37 GMT
-Content-Type: application/pdf
-Transfer-Encoding: chunked
-Connection: keep-alive
-content-disposition: attachment; filename="roster_1.pdf"
-

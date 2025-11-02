@@ -20,7 +20,6 @@ public class TournametsDbContext : DbContext
             eb.HasKey(t => t.Id);
             eb.Property(t => t.Id).HasMaxLength(450);
 
-            // Evitar múltiples rutas de cascada: FinalMatch es opcional y con Restrict
             eb.HasOne(t => t.FinalMatch)
               .WithMany()
               .HasForeignKey(t => t.FinalMatchId)
@@ -49,7 +48,7 @@ public class TournametsDbContext : DbContext
             eb.HasOne(b => b.Tournament)
               .WithMany(t => t.Matches)
               .HasForeignKey(b => b.TournamentId)
-              .OnDelete(DeleteBehavior.Restrict); // clave para NO generar paths múltiples
+              .OnDelete(DeleteBehavior.Restrict); 
 
             eb.HasOne(b => b.Group)
               .WithMany(g => g.Matches)

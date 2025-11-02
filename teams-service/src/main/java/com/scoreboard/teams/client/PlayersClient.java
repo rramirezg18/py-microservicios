@@ -13,7 +13,7 @@ public class PlayersClient {
 
   private final WebClient web;
 
-  // Usa env var players.service.base-url o un valor por defecto
+
   public PlayersClient(
       @Value("${players.service.base-url:http://host.docker.internal:8000/api}") String baseUrl,
       WebClient.Builder builder

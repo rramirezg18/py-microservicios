@@ -1,15 +1,14 @@
-// src/controllers/playerController.js
 
 const playerService = require('../services/playerService');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const logger = require('../config/logger');
 
-// ✅ Obtener todos los jugadores (adaptado para Angular)
+// Obtener todos los jugadores 
 exports.getAllPlayers = async (req, res, next) => {
   try {
     const players = await playerService.getAllPlayers();
 
-    // Devuelve formato compatible con Angular { items, totalCount }
+
     res.status(200).json({
       items: players,
       totalCount: players.length
@@ -20,7 +19,7 @@ exports.getAllPlayers = async (req, res, next) => {
   }
 };
 
-// ✅ Obtener jugador por ID
+
 exports.getPlayerById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -34,14 +33,14 @@ exports.getPlayerById = async (req, res, next) => {
   }
 };
 
-// ✅ Obtener jugadores por ID de equipo
+
 exports.getPlayersByTeam = async (req, res, next) => {
   try {
     const { teamId } = req.params;
     logger.info(`Buscando jugadores para el equipo con ID: ${teamId}`);
     const players = await playerService.getPlayersByTeamId(teamId);
 
-    // También devuelve formato { items, totalCount }
+
     res.status(200).json({
       items: players,
       totalCount: players.length
@@ -51,7 +50,7 @@ exports.getPlayersByTeam = async (req, res, next) => {
   }
 };
 
-// ✅ Crear nuevo jugador
+
 exports.createPlayer = async (req, res, next) => {
   try {
     const newPlayer = await playerService.createPlayer(req.body);
@@ -61,7 +60,6 @@ exports.createPlayer = async (req, res, next) => {
   }
 };
 
-// ✅ Actualizar jugador
 exports.updatePlayer = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -75,7 +73,6 @@ exports.updatePlayer = async (req, res, next) => {
   }
 };
 
-// ✅ Eliminar jugador
 exports.deletePlayer = async (req, res, next) => {
   try {
     const { id } = req.params;
