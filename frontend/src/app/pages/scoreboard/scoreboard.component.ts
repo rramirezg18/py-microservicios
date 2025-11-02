@@ -43,6 +43,7 @@ export class ScoreboardComponent implements OnInit, OnDestroy {
   awayName = 'AWAY';
 
   constructor() {
+    // Efecto para mostrar alerta al terminar el partido
     effect(() => {
       const over = this.realtime.gameOver?.();
       if (!over || !isPlatformBrowser(this.platformId)) return;
@@ -66,24 +67,27 @@ export class ScoreboardComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Carga inicial del estado del partido */
   private hydrateOnce(id: number) {
     this.api.getMatch(id).subscribe({
       next: (m: any) => {
-        // Nombres
+        // 🏷️ Nombres
         this.homeName = m?.homeTeam?.name ?? m?.homeTeamName ?? 'HOME';
         this.awayName = m?.awayTeam?.name ?? m?.awayTeamName ?? 'AWAY';
 
-        // Marcador y periodo
+        // 🧮 Marcador
         if (typeof m.homeScore === 'number' && typeof m.awayScore === 'number') {
           this.realtime.score.set({ home: m.homeScore, away: m.awayScore });
         }
+
+        // 🕒 Cuarto actual
         if (typeof m.period === 'number') this.realtime.quarter.set(m.period);
         if (typeof m.quarter === 'number') this.realtime.quarter.set(m.quarter);
 
-        // Timer snapshot (evita carrera del 1er cuarto)
+        // ⏱️ Timer snapshot
         if (m?.timer) this.realtime.hydrateTimerFromSnapshot(m.timer);
 
-        // Faltas
+        // 🚫 Faltas iniciales
         const fouls = m?.fouls ?? {
           home: m?.homeFouls ?? 0,
           away: m?.awayFouls ?? 0
@@ -91,29 +95,87 @@ export class ScoreboardComponent implements OnInit, OnDestroy {
         if (typeof fouls?.home === 'number' && typeof fouls?.away === 'number') {
           this.realtime.hydrateFoulsFromSnapshot(fouls);
         }
+
+        console.log('📦 Estado inicial cargado', m);
       },
-      error: (err) => console.error('Error cargando match', err)
+      error: (err) => console.error('❌ Error cargando match', err)
     });
   }
+
+  // ===================================================
+  // CICLO DE VIDA
+  // ===================================================
 
   ngOnInit(): void {
     const id = this.matchId();
 
-    // 1) Primer hidratado (por si el hub tarda)
+    // 1️⃣ Cargar estado inicial del partido
     this.hydrateOnce(id);
 
-    // 2) Conexión al Hub y rehidratado inmediatamente después
+    // 2️⃣ Conectar al hub y escuchar eventos
     if (isPlatformBrowser(this.platformId)) {
       this.realtime
         .connect(id)
-        .then(() => this.hydrateOnce(id)) // <<--- REHIDRATA tras unirte al grupo
-        .catch((err) => console.error('Error al conectar realtime', err));
+        .then(() => {
+          console.log('✅ Conectado al hub para match', id);
+          this.setupRealtimeListeners(id);
+        })
+        .catch((err) => console.error('❌ Error al conectar realtime', err));
     }
   }
 
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId)) this.realtime.disconnect();
   }
+
+  // ===================================================
+  // EVENTOS EN TIEMPO REAL
+  // ===================================================
+
+  private setupRealtimeListeners(id: number): void {
+    const hub = this.realtime.hubConnection;
+    if (!hub) return;
+
+    // 🧮 Score actualizado
+    hub.on('scoreUpdated', (data: any) => {
+      console.log('📢 scoreUpdated recibido', data);
+      if (data?.homeScore !== undefined && data?.awayScore !== undefined) {
+        this.realtime.score.set({ home: data.homeScore, away: data.awayScore });
+      }
+    });
+
+    // 🚫 Faltas actualizadas
+    hub.on('foulsUpdated', (data: any) => {
+      console.log('📢 foulsUpdated recibido', data);
+      if (data?.foulsHome !== undefined && data?.foulsAway !== undefined) {
+        this.realtime.fouls.set({ home: data.foulsHome, away: data.foulsAway });
+      }
+    });
+
+    // 🔁 Cambio de cuarto
+    hub.on('quarterChanged', (data: any) => {
+      console.log('📢 quarterChanged recibido', data);
+      if (typeof data?.period === 'number') this.realtime.quarter.set(data.period);
+    });
+
+    // 🏁 Fin del partido
+    hub.on('gameEnded', (data: any) => {
+      console.log('🏁 gameEnded recibido', data);
+      this.realtime.gameOver.set(data);
+    });
+
+    // 🔄 Rehidratación tras reconexión
+    hub.onreconnected(() => {
+      console.warn('🔄 Reconexión detectada → recargando estado...');
+      this.hydrateOnce(id);
+    });
+
+    console.log('✅ Listeners configurados para hub de match', id);
+  }
+
+  // ===================================================
+  // SESIÓN
+  // ===================================================
 
   get isAdmin(): boolean {
     try {

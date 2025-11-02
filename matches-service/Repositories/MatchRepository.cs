@@ -15,6 +15,9 @@ namespace MatchesService.Repositories
         // ================= LISTADOS =================
         public async Task<IEnumerable<Match>> GetAllAsync(int page, int pageSize, string? status, int? teamId, DateTime? from, DateTime? to)
         {
+            // ✅ Evita errores de OFFSET negativo
+            page = Math.Max(page, 1);
+
             var query = _context.Matches.AsNoTracking().AsQueryable();
 
             if (!string.IsNullOrEmpty(status))
@@ -57,7 +60,7 @@ namespace MatchesService.Repositories
 
         public async Task<Match?> GetByIdAsync(int id)
         {
-            // tracked para modificaciones subsecuentes
+            // Tracked para modificaciones subsecuentes
             return await _context.Matches
                 .Include(m => m.ScoreEvents)
                 .Include(m => m.Fouls)
@@ -84,8 +87,19 @@ namespace MatchesService.Repositories
 
         // ================= CRUD MATCH =================
         public async Task AddAsync(Match match) => await _context.Matches.AddAsync(match);
-        public Task UpdateAsync(Match match) { _context.Matches.Update(match); return Task.CompletedTask; }
-        public Task DeleteAsync(Match match) { _context.Matches.Remove(match); return Task.CompletedTask; }
+
+        public Task UpdateAsync(Match match)
+        {
+            _context.Matches.Update(match);
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteAsync(Match match)
+        {
+            _context.Matches.Remove(match);
+            return Task.CompletedTask;
+        }
+
         public async Task SaveChangesAsync() => await _context.SaveChangesAsync();
 
         // ================= SCORE EVENTS =================

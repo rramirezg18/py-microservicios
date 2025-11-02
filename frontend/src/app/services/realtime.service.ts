@@ -9,18 +9,15 @@ export class RealtimeService {
   private readonly isBrowser =
     typeof window !== 'undefined' && typeof document !== 'undefined';
 
-  // Estado público
+  // ============ 🧮 Estado general ============
   score = signal<{ home: number; away: number }>({ home: 0, away: 0 });
   timeLeft = signal(0);
   timerRunning = signal(false);
   quarter = signal(1);
+  fouls = signal<{ home: number; away: number }>({ home: 0, away: 0 });
 
-  // Timeout
   timeoutLeft = signal(0);
   timeoutRunning = signal(false);
-
-  // Faltas
-  fouls = signal<{ home: number; away: number }>({ home: 0, away: 0 });
 
   gameOver = signal<{
     home: number;
@@ -33,6 +30,9 @@ export class RealtimeService {
   private timeoutTick?: any;
   private audioCtx?: AudioContext;
 
+  // ==================================================
+  // 🧭 UTILIDADES
+  // ==================================================
   public beep() {
     this.playBuzzer();
   }
@@ -56,6 +56,9 @@ export class RealtimeService {
     }
   }
 
+  // ==================================================
+  // ⏱️ TIMER PRINCIPAL
+  // ==================================================
   private startTick() {
     this.stopTick();
     this.tick = setInterval(() => {
@@ -82,18 +85,18 @@ export class RealtimeService {
     }
   }
 
-  // Timeout
+  // ==================================================
+  // 🕐 TIMEOUTS
+  // ==================================================
   startTimeout(seconds: number, onDone?: () => void) {
     this.stopTimeout();
     if (seconds <= 0) return;
     this.timeoutLeft.set(seconds);
     this.timeoutRunning.set(true);
     this.timeoutEndsAt = Date.now() + seconds * 1000;
+
     this.timeoutTick = setInterval(() => {
-      const s = Math.max(
-        0,
-        Math.floor((this.timeoutEndsAt! - Date.now()) / 1000)
-      );
+      const s = Math.max(0, Math.floor((this.timeoutEndsAt! - Date.now()) / 1000));
       this.timeoutLeft.set(s);
       if (s === 0) {
         this.stopTimeout();
@@ -103,15 +106,16 @@ export class RealtimeService {
   }
 
   private stopTimeout() {
-    if (this.timeoutTick) {
-      clearInterval(this.timeoutTick);
-      this.timeoutTick = undefined;
-    }
+    if (this.timeoutTick) clearInterval(this.timeoutTick);
+    this.timeoutTick = undefined;
     this.timeoutEndsAt = undefined;
     this.timeoutLeft.set(0);
     this.timeoutRunning.set(false);
   }
 
+  // ==================================================
+  // 💾 HIDRATAR SNAPSHOT
+  // ==================================================
   hydrateTimerFromSnapshot(snap?: {
     running: boolean;
     remainingSeconds: number;
@@ -121,6 +125,7 @@ export class RealtimeService {
     if (!snap) return;
     this.stopTimeout();
     this.gameOver.set(null);
+
     if (typeof snap.quarter === 'number') this.quarter.set(snap.quarter);
 
     const secs = snap.remainingSeconds ?? 0;
@@ -142,27 +147,41 @@ export class RealtimeService {
     this.fouls.set({ home: snap.home ?? 0, away: snap.away ?? 0 });
   }
 
+  // ==================================================
+  // 🌐 SIGNALR HUB
+  // ==================================================
+  get hubConnection() {
+    return this.hub;
+  }
+
   async connect(matchId: number) {
     if (!this.isBrowser) return;
     if (this.hub) return;
 
     this.hub = new signalR.HubConnectionBuilder()
-      .withUrl(`/hub/matches?matchId=${matchId}`)
+      .withUrl(`/hub/matches?matchId=${matchId}`, {
+        withCredentials: false,
+        // accessTokenFactory: () => localStorage.getItem('token') || ''
+      })
       .configureLogging(signalR.LogLevel.Information)
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .build();
 
-    this.hub.onreconnecting(err => console.warn('[SignalR] reconnecting', err));
-    this.hub.onreconnected(id => console.log('[SignalR] reconnected', id));
-    this.hub.onclose(err => console.warn('[SignalR] closed', err));
+    // 📡 Eventos del ciclo de vida
+    this.hub.onreconnecting(err =>
+      console.warn('[SignalR] 🔄 Reconectando...', err)
+    );
+    this.hub.onreconnected(id => {
+      console.log('[SignalR] 🔁 Reconexion completa', id);
+    });
+    this.hub.onclose(err => console.warn('[SignalR] ❌ Conexión cerrada', err));
 
-    // Score
+    // 📢 Eventos del backend
     this.hub.on('scoreUpdated', (s: { homeScore: number; awayScore: number }) => {
       this.score.set({ home: s.homeScore, away: s.awayScore });
     });
 
-    // Timer
-    this.hub.on('timerStarted', (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
+    this.hub.on('timerStarted', (t: { remainingSeconds: number }) => {
       this.stopTimeout();
       this.timeLeft.set(t.remainingSeconds);
       this.timerRunning.set(true);
@@ -177,7 +196,7 @@ export class RealtimeService {
       this.endsAt = undefined;
     });
 
-    this.hub.on('timerResumed', (t: { quarterEndsAtUtc: string; remainingSeconds: number }) => {
+    this.hub.on('timerResumed', (t: { remainingSeconds: number }) => {
       this.stopTimeout();
       this.timeLeft.set(t.remainingSeconds);
       this.timerRunning.set(true);
@@ -193,13 +212,6 @@ export class RealtimeService {
       this.endsAt = undefined;
     });
 
-    this.hub.on('timerUpdated', (t: { remainingSeconds: number }) => {
-      this.timeLeft.set(t.remainingSeconds);
-      if (this.timerRunning()) {
-        this.endsAt = Date.now() + t.remainingSeconds * 1000;
-      }
-    });
-
     this.hub.on('matchUpdated', (p: { quarter?: number }) => {
       if (typeof p?.quarter === 'number') this.quarter.set(p.quarter);
     });
@@ -208,22 +220,26 @@ export class RealtimeService {
       if (typeof p.quarter === 'number') this.quarter.set(p.quarter);
     });
 
-    this.hub.on('foulsUpdated', (p: { homeFouls: number; awayFouls: number }) => {
-      this.fouls.set({ home: p.homeFouls, away: p.awayFouls });
+    // 🚫 Faltas
+    this.hub.on('foulsUpdated', (p: any) => {
+      const home = p.homeFouls ?? p.foulsHome ?? p.home ?? 0;
+      const away = p.awayFouls ?? p.foulsAway ?? p.away ?? 0;
+      this.fouls.set({ home, away });
+      console.log('[SignalR] ⚠️ foulsUpdated recibido', { home, away });
     });
 
+    // 🔔 Buzzer / fin
     this.hub.on('buzzer', () => this.playBuzzer());
-
     this.hub.on('gameEnded', (p: { home: number; away: number; winner: 'home' | 'away' | 'draw' }) => {
       this.gameOver.set(p);
     });
 
+    // Conectar
     await this.hub.start();
 
-    // Únete explícitamente al grupo
     try {
       await this.hub.invoke('JoinMatch', matchId);
-      console.log('[SignalR] joined match group', matchId);
+      console.log(`[SignalR] ✅ joined match group match-${matchId}`);
     } catch (e) {
       console.error('[SignalR] JoinMatch failed', e);
     }
@@ -233,7 +249,12 @@ export class RealtimeService {
     this.stopTick();
     this.stopTimeout();
     if (this.hub) {
-      try { await this.hub.stop(); } finally { this.hub = undefined; }
+      try {
+        await this.hub.stop();
+        console.log('[SignalR] 🔌 Desconectado');
+      } finally {
+        this.hub = undefined;
+      }
     }
   }
 }

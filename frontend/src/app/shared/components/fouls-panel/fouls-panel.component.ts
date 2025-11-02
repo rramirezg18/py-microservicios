@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, computed, inject } from '@angular/core';
+import { Component, Input, signal, computed, effect, inject } from '@angular/core';
 import { RealtimeService } from '@app/services/realtime.service';
-
 
 @Component({
   selector: 'app-fouls-panel',
@@ -13,11 +12,15 @@ import { RealtimeService } from '@app/services/realtime.service';
 export class FoulsPanelComponent {
   private rt = inject(RealtimeService);
 
-  /** Indica qué lado mostrar */
-  @Input() side: 'home' | 'away' = 'home';
+  /** Lado (home o away) */
+  @Input({ required: true }) side: 'home' | 'away' = 'home';
 
-  /** Valor reactivo de faltas según el lado */
-  value = computed(() =>
-    this.side === 'home' ? this.rt.fouls().home : this.rt.fouls().away
-  );
+  /** Señales de faltas */
+  foulsHome = computed(() => this.rt.fouls().home);
+  foulsAway = computed(() => this.rt.fouls().away);
+
+  /** Valor mostrado según lado */
+  value = computed(() => {
+    return this.side === 'home' ? this.foulsHome() : this.foulsAway();
+  });
 }

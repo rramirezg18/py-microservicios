@@ -14,27 +14,35 @@
     </nav>
   </div>
 
-  <!-- TABLERO -->
+  <!-- TABLERO PRINCIPAL -->
   <div class="board">
-    <!-- TOP -->
+    <!-- SECCIÓN SUPERIOR (FALTAS Y TIMER) -->
     <div class="top">
+      <!-- FALTAS EQUIPO LOCAL -->
       <app-fouls-panel side="home" class="fouls left"></app-fouls-panel>
 
+      <!-- TIMER CENTRAL -->
       <div class="timer-wrap">
         <div class="timer-bezel">
           <app-timer></app-timer>
         </div>
       </div>
 
+      <!-- FALTAS EQUIPO VISITANTE -->
       <app-fouls-panel side="away" class="fouls right"></app-fouls-panel>
     </div>
 
-    <!-- MIDDLE -->
+    <!-- SECCIÓN CENTRAL (MARCADORES Y CUARTO) -->
     <div class="middle">
+      <!-- EQUIPO LOCAL -->
       <div class="score-box left">
-        <app-team-panel [label]="homeName" [score]="realtime.score().home"></app-team-panel>
+        <app-team-panel
+          [label]="homeName"
+          [score]="realtime.score().home">
+        </app-team-panel>
       </div>
 
+      <!-- INDICADOR DE CUARTO -->
       <div class="center">
         <div class="pos">
           <span class="arrow left active">◄</span>
@@ -44,8 +52,12 @@
         <app-quarter-indicator></app-quarter-indicator>
       </div>
 
+      <!-- EQUIPO VISITANTE -->
       <div class="score-box right">
-        <app-team-panel [label]="awayName" [score]="realtime.score().away"></app-team-panel>
+        <app-team-panel
+          [label]="awayName"
+          [score]="realtime.score().away">
+        </app-team-panel>
       </div>
     </div>
   </div>
