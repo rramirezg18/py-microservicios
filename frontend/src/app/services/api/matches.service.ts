@@ -250,18 +250,26 @@ export class MatchesService {
           const body = { seconds: duration, quarterDurationSeconds: duration };
           return this.http.post<any>(`${this.baseUrl}/${matchId}/timer/start`, body);
         }),
-        map((x) => this.normalize(x))
+        map((x) => this.normalize(x)),
+        switchMap((m) => this.enrichNames([m])),
+        map(([m]) => m)
       );
     }
     return this.http.post<any>(`${this.baseUrl}/${matchId}/timer/${action}`, {}).pipe(
-      map((x) => this.normalize(x))
+      map((x) => this.normalize(x)),
+      switchMap((m) => this.enrichNames([m])),
+      map(([m]) => m)
     );
   }
 
   nextQuarter(matchId: number): Observable<MatchModel> {
     return this.http
       .post<any>(`${this.baseUrl}/${matchId}/quarters/advance`, {})
-      .pipe(map((x) => this.normalize(x)));
+      .pipe(
+        map((x) => this.normalize(x)),
+        switchMap((m) => this.enrichNames([m])),
+        map(([m]) => m)
+      );
   }
 
   finishMatch(
@@ -270,13 +278,9 @@ export class MatchesService {
   ): Observable<MatchModel> {
     return this.http
       .post<any>(`${this.baseUrl}/${matchId}/finish`, scores ?? {})
-      .pipe(map((x) => this.normalize(x)));
+      .pipe(
+        map((x) => this.normalize(x)),
+        switchMap((m) => this.enrichNames([m])),
+        map(([m]) => m)
+      );
   }
-
-  // -------------------------
-  // Helpers
-  // -------------------------
-  private resolveTeamId(matchId: number, side: TeamSide): Observable<number> {
-    return this.getMatch(matchId).pipe(map((m) => (side === 'home' ? m.homeTeamId : m.awayTeamId)));
-  }
-}
