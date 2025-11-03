@@ -481,3 +481,21 @@ MYSQL_PASSWORD=mysqlpass
 ```
 
 ---
+---
+
+##  Bibliotecas y librerías utilizadas
+
+| Microservicio | Lenguaje / Framework | Librerías principales | Propósito |
+|----------------|----------------------|------------------------|------------|
+| **auth-service** | ASP.NET Core 8 | `Microsoft.EntityFrameworkCore`, `Microsoft.AspNetCore.Authentication.JwtBearer`, `Serilog`, `Swashbuckle.AspNetCore` | Manejo de autenticación, roles, emisión de tokens JWT y Swagger para pruebas. |
+| **matches-service** | ASP.NET Core 8 + SignalR | `Microsoft.AspNetCore.SignalR`, `EntityFrameworkCore`, `Serilog`, `AutoMapper` | Control de partidos, cronómetro y marcador en tiempo real mediante WebSockets. |
+| **tournament-service** | ASP.NET Core 8 | `EntityFrameworkCore`, `FluentValidation`, `Serilog` | Gestión de torneos, grupos y emparejamientos. |
+| **teams-service** | Java Spring Boot | `Spring Web`, `Spring Data JPA`, `Hibernate`, `Lombok`, `Spring Boot Actuator`, `jjwt` | Administración de equipos y conexión con PostgreSQL. |
+| **players-service** | Node.js (Express) | `express`, `mysql2`, `sequelize`, `joi`, `cors`, `morgan`, `dotenv` | CRUD de jugadores y validaciones con conexión MySQL. |
+| **report-service** | Python (FastAPI) | `fastapi`, `uvicorn`, `pydantic`, `pymongo`, `reportlab`, `requests` | Generación de reportes PDF y agregados estadísticos desde MongoDB. |
+| **frontend (Angular)** | Angular 20 + TypeScript | `@angular/core`, `@angular/material`, `rxjs`, `signalr`, `jspdf`, `ngx-toastr` | Interfaz web, conexión al hub de tiempo real y descarga de reportes. |
+| **gateway (Nginx)** | Nginx 1.27-alpine | — | Reverse proxy para microservicios y túnel de WebSockets (`/hub/matches`). |
+
+---
+
+> **Nota:** Cada microservicio utiliza su propio conjunto de dependencias específicas, pero todos comparten un esquema común de comunicación REST con autenticación JWT y CORS habilitado hacia el dominio del frontend (`https://proyectosdw.lat`).

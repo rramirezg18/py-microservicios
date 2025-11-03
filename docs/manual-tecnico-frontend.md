@@ -348,4 +348,25 @@ else show('Error del servidor de reportes.');
 
 ---
 
+---
+
+##  Bibliotecas y librerías utilizadas
+
+| Categoría | Paquete / Librería | Propósito o uso principal |
+|------------|--------------------|----------------------------|
+| **Framework base** | `@angular/core`, `@angular/router`, `@angular/common`, `@angular/forms` | Núcleo de Angular, enrutamiento, formularios reactivos y standalone components. |
+| **UI / Estilos** | `@angular/material`, `@angular/cdk`, `@angular/animations` | Componentes de interfaz, diálogos, tablas y animaciones. |
+| **Comunicación HTTP** | `@angular/common/http`, `rxjs` | Peticiones REST, interceptores, Observables y flujos reactivos. |
+| **Autenticación y seguridad** | `jwt-decode`, `@auth0/angular-jwt` (opcional) | Decodificación de JWT y validación de roles en el frontend. |
+| **Tiempo real** | `@microsoft/signalr` | Cliente de SignalR para conexión al hub `/hub/matches` y sincronización del marcador. |
+| **Alertas y UX** | `sweetalert2`, `ngx-toastr`, `MatSnackBar` | Notificaciones y mensajes al usuario. |
+| **Reportería / Archivos** | `file-saver`, `jspdf`, `html2canvas` | Descarga y visualización de reportes PDF. |
+| **SSR (opcional)** | `@angular/ssr`, `express`, `compression` | Renderizado del lado del servidor para SEO y performance. |
+| **Herramientas y DevOps** | `typescript`, `eslint`, `prettier`, `zone.js`, `tslib` | Tipado, linting, optimización y compatibilidad Angular CLI. |
+| **Proxy / Gateway local** | `proxy.conf.json` (Angular CLI) | Redirección local de `/api/*` y `/hub/*` hacia los microservicios en desarrollo. |
+
+---
+
+> **Nota:** Todas las librerías se instalan automáticamente mediante `npm ci` o `npm install` en la raíz del proyecto.  
+> El uso de dependencias externas sigue las mejores prácticas de Angular 20, evitando paquetes obsoletos o inseguros.
 
