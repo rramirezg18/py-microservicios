@@ -58,6 +58,7 @@ Esta aplicación esta desarrollada con una arquitectura microservidios .
 
 
 **El siguiente manual te mostrara los pasos para utilizar las funcionalidades de la aplicación, por ejemplo crear torneos, registrar jugadores y equipos, etc.
+
 [**Manual de usuario - Admin**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-usuario-admin.md "admin")
 
 [**Manual de usuario - rol control**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-usuario-rol-usuario.md "control")
