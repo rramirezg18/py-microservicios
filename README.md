@@ -57,7 +57,7 @@ Esta aplicación esta desarrollada con una arquitectura microservidios .
 [**Manual tecnico - Frontend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-tecnico-frontend.md "frontend")
 
 
-**El siguiente manual te mostrara los pasos para utilizar las funcionalidades de la aplicación, por ejemplo crear torneos, registrar jugadores y equipos, etc.
+**El siguiente manual te mostrara los pasos para utilizar las funcionalidades de la aplicación, por ejemplo crear torneos, registrar jugadores y equipos, etc.**
 
 [**Manual de usuario - Admin**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-usuario-admin.md "admin")
 
