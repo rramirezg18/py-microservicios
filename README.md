@@ -7,8 +7,9 @@
 <h1><strong>Administración de Marcador de Baloncesto</h1>
 </div>
 
-#Accede a nuestra aplicacón
-**[(https://proyectosdw.lat)**
+# Accede a nuestra aplicacón
+
+**https://proyectosdw.lat**
 
 Puedes acceder con tu cuenta de **GitHub** para probar todas las funcionalidades de la aplicación.
 
