@@ -105,7 +105,8 @@ Unificar datos de Teams (PostgreSQL), Players (MySQL) y Matches (SQL Server) en 
 - **Dimensiones (`dim_*`)**: `dim_team`, `dim_player`, `dim_date` (opcional).  
 - **Hechos (`fact_*`)**: `fact_match`, `fact_score_event`, `fact_foul`.
 
-```mermaid
+```
+mermaid
 erDiagram
   DIM_TEAM ||--o{ FACT_MATCH : "Team SK"
   DIM_TEAM ||--o{ FACT_SCORE_EVENT : "Team SK"
