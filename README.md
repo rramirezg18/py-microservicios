@@ -15,14 +15,14 @@
 
 ---
 
-## 🌐 Acceso a la aplicación
+## Acceso a la aplicación
 
 **https://proyectosdw.lat**  
 _Inicia sesión con tu cuenta de **GitHub** para probar todas las funcionalidades._
 
 ---
 
-## 👥 Proyecto desarrollado por
+## Proyecto desarrollado por
 
 - **Roberto Antonio Ramírez Gómez** — *7690-22-12700*  
 - **Jean Klaus Castañeda Santos** — *7690-22-892*  
@@ -30,14 +30,14 @@ _Inicia sesión con tu cuenta de **GitHub** para probar todas las funcionalidade
 
 ---
 
-## 🧠 Descripción general
+## Descripción general
 
 Aplicación web de **marcador de baloncesto** con **arquitectura de microservicios**, actualizaciones **en tiempo real** (SignalR), autenticación con **JWT**, y un **frontend Angular** servido por **Nginx**.  
 Incluye un **ETL** que consolida datos desde los servicios transaccionales hacia **MongoDB** para reportes.
 
 ---
 
-## 🏗️ Arquitectura (Resumen)
+## rquitectura 
 
 | Microservicio / Componente | Lenguaje / Framework                    | Base de datos        | Tipo BD                    | Observaciones |
 |---|---|---|---|---|
@@ -85,11 +85,16 @@ cd py-microservicios
 
 # Levantar servicios
 docker compose up -d --build
+```
 
 
 ## **Enlaces para ver la documentación de la aplicación:**
+
 [**Documentación Frontend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/documentacion%20del%20FRONTED.md "Frontend")
+
+
 [**Documentación Backend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/documentacion%20del%20BACKEND.md "Backend")
+
 [**Documentación Base de Datos**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/DocumentacionBD.md "Base de Datos")
 [**Guia despliegue VPS**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/guia-despliegue-frontend-vps.md "VPS")
 [**Manual tecnico - Backend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-tecnico-backends.md "backend")
