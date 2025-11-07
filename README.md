@@ -92,14 +92,18 @@ docker compose up -d --build
 
 [**Documentación Frontend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/documentacion%20del%20FRONTED.md "Frontend")
 
-
 [**Documentación Backend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/documentacion%20del%20BACKEND.md "Backend")
 
 [**Documentación Base de Datos**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/DocumentacionBD.md "Base de Datos")
+
 [**Guia despliegue VPS**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/guia-despliegue-frontend-vps.md "VPS")
+
 [**Manual tecnico - Backend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-tecnico-backends.md "backend")
+
 [**Manual tecnico - Frontend**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-tecnico-frontend.md "frontend")
+
 **El siguiente manual te mostrara los pasos para utilizar las funcionalidades de la aplicación, por ejemplo crear torneos, registrar jugadores y equipos, etc.**
 [**Manual de usuario - Admin**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-usuario-admin.md "admin")
+
 [**Manual de usuario - rol control**](https://github.com/rramirezg18/py-microservicios/blob/main/docs/manual-usuario-rol-usuario.md "control")
 
